@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// --- Connect + login (SRP) ---
-	m := proton.New(proton.WithHostURL("https://api.proton.me"))
+	m := proton.New() // default host: https://mail.proton.me/api
 	defer m.Close()
 
 	c, auth, err := m.NewClientWithLogin(ctx, username, password)
