@@ -57,7 +57,7 @@ func main() {
 	}
 
 	// --- Connect + login (SRP) ---
-	m := proton.New() // default host: https://mail.proton.me/api
+	m := proton.New(proton.WithAppVersion("Other_0.1.0")) // platform must be a known value; "go" (default) is rejected
 	defer m.Close()
 
 	c, auth, err := m.NewClientWithLogin(ctx, username, password)
