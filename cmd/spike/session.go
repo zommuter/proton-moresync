@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/go-resty/resty/v2"
 
@@ -68,26 +72,52 @@ type hvResponse struct {
 	} `json:"Details"`
 }
 
-// registerHVProbe attaches a Manager-level post-request hook that captures and
-// logs HumanVerificationMethods + Token when Proton returns code 9001.
-// It NEVER fires a duplicate auth call — it tees the response of the existing
-// failed login. Always returns nil so it never interrupts the request chain.
+// hvCaptureTransport wraps an http.RoundTripper to capture HV Details from 422
+// responses before resty's catchAPIError middleware stops the chain.
+// It buffers the body and restores it so resty can still parse the APIError.
+type hvCaptureTransport struct {
+	base    http.RoundTripper
+	capture *hvCapture
+}
+
+func (t *hvCaptureTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.base.RoundTrip(req)
+	if err != nil || resp.StatusCode != 422 {
+		return resp, err
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	// Restore body so resty and catchAPIError can still read it.
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	if readErr != nil {
+		return resp, nil
+	}
+	var hv hvResponse
+	if json.Unmarshal(body, &hv) == nil && hv.Code == int(proton.HumanVerificationRequired) {
+		t.capture.Methods = hv.Details.HumanVerificationMethods
+		t.capture.Token = hv.Details.HumanVerificationToken
+		fmt.Printf("FINDING: HV required — methods=%v token-len=%d\n",
+			t.capture.Methods, len(t.capture.Token))
+	}
+	return resp, nil
+}
+
+// registerHVProbe installs a transport-level interceptor that captures the HV
+// token and methods from any 422 response before resty's middleware chain sees
+// it. Uses AddPreRequestHook (fires before the HTTP call) to install the
+// wrapper exactly once on the manager's underlying http.Client.
 func registerHVProbe(m *proton.Manager) *hvCapture {
 	cap := &hvCapture{}
-	m.AddPostRequestHook(func(_ *resty.Client, resp *resty.Response) error {
-		if resp.StatusCode() != 422 {
-			return nil
-		}
-		var hv hvResponse
-		if err := json.Unmarshal(resp.Body(), &hv); err != nil {
-			return nil
-		}
-		if hv.Code == int(proton.HumanVerificationRequired) {
-			cap.Methods = hv.Details.HumanVerificationMethods
-			cap.Token = hv.Details.HumanVerificationToken
-			fmt.Printf("FINDING: HV required — methods=%v token-len=%d\n",
-				cap.Methods, len(cap.Token))
-		}
+	var once sync.Once
+	m.AddPreRequestHook(func(c *resty.Client, _ *resty.Request) error {
+		once.Do(func() {
+			hc := c.GetClient()
+			base := hc.Transport
+			if base == nil {
+				base = http.DefaultTransport
+			}
+			hc.Transport = &hvCaptureTransport{base: base, capture: cap}
+		})
 		return nil
 	})
 	return cap
