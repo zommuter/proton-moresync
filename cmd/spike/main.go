@@ -106,7 +106,7 @@ func main() {
 				if hv.Token == "" {
 					die("HV probe", fmt.Errorf("HV required but token not captured from response"))
 				}
-				solvedToken, solveErr := solveCaptcha(ctx, hv.Token)
+				solvedToken, solveErr := solveCaptcha(ctx, m, hv.Token)
 				if solveErr != nil {
 					die("CAPTCHA solve", solveErr)
 				}
