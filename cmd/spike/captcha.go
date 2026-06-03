@@ -70,51 +70,79 @@ func solveCaptcha(ctx context.Context, hvToken string) (string, error) {
 	}
 }
 
-// buildCaptchaPage returns an HTML page that opens verify.proton.me as a
-// popup (window.open) and relays the solved token via a local /solved POST.
+// buildCaptchaPage returns an HTML relay page that:
+//   1. Opens verify.proton.me as a popup (bypasses frame-ancestors CSP).
+//   2. Listens for postMessage from the popup (works if verify.proton.me
+//      targets window.opener; logged in console for debugging).
+//   3. Provides a manual fallback form: if auto-capture doesn't fire, the
+//      user pastes the token from the popup's DevTools console.
 //
-// Iframe approach is blocked by verify.proton.me's frame-ancestors CSP
-// (only mail/calendar/drive.proton.me are allowed as embedders).
-// window.open bypasses frame-ancestors; the popup sends its postMessage to
-// window.opener (our page) if verify.proton.me targets the opener.
-// The page also logs raw message events for debugging.
+// To get the token manually: in the popup's DevTools Console run:
+//
+//	window.addEventListener('message', function(e){
+//	  var t=(e.data.payload&&e.data.payload.token)||e.data.token;
+//	  if(t) console.log('TOKEN:',t);
+//	})
+//
+// Then complete the verification and copy the TOKEN value from the console.
 func buildCaptchaPage(hvToken string) string {
 	return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Proton CAPTCHA</title>
-<style>body{font-family:sans-serif;padding:16px;max-width:540px}</style>
+<title>Proton verification</title>
+<style>
+body{font-family:sans-serif;padding:16px;max-width:560px}
+#manual{margin-top:24px;padding:12px;border:1px solid #ccc;border-radius:4px}
+input{width:400px;padding:4px}
+</style>
 </head>
 <body>
-<h2>Proton CAPTCHA</h2>
-<p id="status">Opening CAPTCHA popup…</p>
-<p><small>If the popup was blocked, <a id="link" href="#" target="_blank">click here</a> to open it manually.</small></p>
+<h2>Proton Human Verification</h2>
+<p id="status">Opening verification popup…</p>
+<p><small>Popup blocked? <a id="link" href="#" target="_blank">Open manually</a></small></p>
+
+<div id="manual">
+  <p><strong>Manual fallback</strong> — if the popup closes but this page doesn't proceed:</p>
+  <ol>
+    <li>In the popup's DevTools Console, run:<br>
+        <code>window.addEventListener('message',function(e){var t=(e.data.payload&&e.data.payload.token)||e.data.token;if(t)console.log('TOKEN:',t)})</code>
+    </li>
+    <li>Complete the verification in the popup.</li>
+    <li>Copy the TOKEN value from the console and paste it below:</li>
+  </ol>
+  <input id="tok" type="text" placeholder="paste token here">
+  <button onclick="submitToken()">Submit</button>
+</div>
+
 <script>
 var url = 'https://verify.proton.me?Token=` + hvToken + `&ForceWebMessaging=1';
 document.getElementById('link').href = url;
-
-var popup = window.open(url, 'proton-captcha', 'width=520,height=460');
+var popup = window.open(url, 'proton-verify', 'width=540,height=500');
 if (popup) {
-    document.getElementById('status').textContent = 'Solve the CAPTCHA in the popup, then this window will close automatically.';
+    document.getElementById('status').textContent = 'Complete the verification in the popup. This page will proceed automatically if postMessage is received.';
 } else {
-    document.getElementById('status').textContent = 'Popup blocked — use the link above to open manually.';
+    document.getElementById('status').textContent = 'Popup blocked — use the link above, then use the manual fallback below.';
 }
 
 window.addEventListener('message', function(e) {
-    console.log('postMessage received:', JSON.stringify(e.data), 'origin:', e.origin);
-    var d = e.data;
-    if (!d) return;
-    // Support both flat {token:...} and nested {payload:{token:...}} formats.
-    var token = (d.payload && d.payload.token) || d.token;
+    console.log('postMessage from popup:', JSON.stringify(e.data), 'origin:', e.origin);
+    relay((e.data.payload && e.data.payload.token) || e.data.token, JSON.stringify(e.data));
+});
+
+function submitToken() {
+    relay(document.getElementById('tok').value.trim(), 'manual-entry');
+}
+
+function relay(token, raw) {
     if (!token) return;
-    document.getElementById('status').textContent = 'CAPTCHA solved! You may close this window.';
+    document.getElementById('status').textContent = 'Token captured — proceeding…';
     fetch('/solved', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({token: token, raw: JSON.stringify(d)})
+        body: JSON.stringify({token: token, raw: raw})
     });
-});
+}
 </script>
 </body>
 </html>`
