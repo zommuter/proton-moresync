@@ -70,33 +70,45 @@ func solveCaptcha(ctx context.Context, hvToken string) (string, error) {
 	}
 }
 
-// buildCaptchaPage returns an HTML page that embeds verify.proton.me in an
-// iframe and relays the solved token back via a local /solved POST.
-// The page listens for both flat {token:...} and nested {payload:{token:...}}
-// postMessage formats since Proton's widget format has varied over versions.
+// buildCaptchaPage returns an HTML page that opens verify.proton.me as a
+// popup (window.open) and relays the solved token via a local /solved POST.
+//
+// Iframe approach is blocked by verify.proton.me's frame-ancestors CSP
+// (only mail/calendar/drive.proton.me are allowed as embedders).
+// window.open bypasses frame-ancestors; the popup sends its postMessage to
+// window.opener (our page) if verify.proton.me targets the opener.
+// The page also logs raw message events for debugging.
 func buildCaptchaPage(hvToken string) string {
 	return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <title>Proton CAPTCHA</title>
-<style>body{font-family:sans-serif;padding:16px;max-width:500px}</style>
+<style>body{font-family:sans-serif;padding:16px;max-width:540px}</style>
 </head>
 <body>
-<h2>Solve the CAPTCHA to continue</h2>
-<p id="status">Waiting for solution…</p>
-<iframe
-    src="https://verify.proton.me?Token=` + hvToken + `&ForceWebMessaging=1"
-    style="width:440px;height:360px;border:1px solid #ccc;"
-></iframe>
+<h2>Proton CAPTCHA</h2>
+<p id="status">Opening CAPTCHA popup…</p>
+<p><small>If the popup was blocked, <a id="link" href="#" target="_blank">click here</a> to open it manually.</small></p>
 <script>
+var url = 'https://verify.proton.me?Token=` + hvToken + `&ForceWebMessaging=1';
+document.getElementById('link').href = url;
+
+var popup = window.open(url, 'proton-captcha', 'width=520,height=460');
+if (popup) {
+    document.getElementById('status').textContent = 'Solve the CAPTCHA in the popup, then this window will close automatically.';
+} else {
+    document.getElementById('status').textContent = 'Popup blocked — use the link above to open manually.';
+}
+
 window.addEventListener('message', function(e) {
+    console.log('postMessage received:', JSON.stringify(e.data), 'origin:', e.origin);
     var d = e.data;
     if (!d) return;
     // Support both flat {token:...} and nested {payload:{token:...}} formats.
     var token = (d.payload && d.payload.token) || d.token;
     if (!token) return;
-    document.getElementById('status').textContent = 'Solved! You may close this tab.';
+    document.getElementById('status').textContent = 'CAPTCHA solved! You may close this window.';
     fetch('/solved', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
