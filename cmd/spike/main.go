@@ -6,6 +6,8 @@
 // If PROTON_PASS is unset you are prompted (echo-suppressed).
 // If your account uses two-password mode you are prompted for the mailbox password too.
 // If 2FA (TOTP) is enabled you are prompted for the code.
+// If Proton requires CAPTCHA, a browser window opens automatically; solve it and
+// the run continues without interaction.
 //
 // Output: prints decrypted vCard + raw calendar event parts, plus FINDING: lines
 // that summarise whether each step was turnkey via go-proton-api or needed hand-assembly.
@@ -51,9 +53,9 @@ func main() {
 	m := proton.New(proton.WithAppVersion("Other_0.1.0")) // platform must be a known value; "go" (default) is rejected
 	defer m.Close()
 
-	// Tee the raw login-failure response so we can log HV methods if Proton
-	// demands human verification (code 9001). No duplicate call — pure tee.
-	registerHVProbe(m)
+	// Tee the raw login-failure response so we can log and capture the HV token
+	// if Proton demands human verification (code 9001). No duplicate call — pure tee.
+	hv := registerHVProbe(m)
 
 	// The mailbox password unlocks private keys and is always needed for
 	// decryption, even when reusing a persisted session (session reuse only
@@ -101,13 +103,21 @@ func main() {
 		if loginErr != nil {
 			var apiErr *proton.APIError
 			if errors.As(loginErr, &apiErr) && apiErr.Code == proton.HumanVerificationRequired {
-				// registerHVProbe already logged the offered methods above.
-				fmt.Fprintln(os.Stderr,
-					"\nHV solve not implemented yet — check FINDING lines above for offered methods.\n"+
-						"Once the email or CAPTCHA solver is added, rerun.")
-				os.Exit(1)
+				if hv.Token == "" {
+					die("HV probe", fmt.Errorf("HV required but token not captured from response"))
+				}
+				solvedToken, solveErr := solveCaptcha(ctx, hv.Token)
+				if solveErr != nil {
+					die("CAPTCHA solve", solveErr)
+				}
+				m.AddPreRequestHook(hvPreRequestHook(solvedToken))
+				loginClient, auth, loginErr = m.NewClientWithLogin(ctx, username, password)
+				if loginErr != nil {
+					die("login after CAPTCHA", loginErr)
+				}
+			} else {
+				die("login", loginErr)
 			}
-			die("login", loginErr)
 		}
 
 		// 2FA

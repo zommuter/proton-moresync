@@ -53,6 +53,12 @@ func saveSession(s *Session) error {
 	return os.WriteFile(p, data, 0600)
 }
 
+// hvCapture holds the token and methods captured from the first failed login.
+type hvCapture struct {
+	Methods []string
+	Token   string
+}
+
 // hvResponse mirrors the Proton auth-failure JSON shape that go-proton-api drops.
 type hvResponse struct {
 	Code    int `json:"Code"`
@@ -62,11 +68,12 @@ type hvResponse struct {
 	} `json:"Details"`
 }
 
-// registerHVProbe attaches a Manager-level post-request hook that logs the
-// HumanVerificationMethods list when Proton returns code 9001.
+// registerHVProbe attaches a Manager-level post-request hook that captures and
+// logs HumanVerificationMethods + Token when Proton returns code 9001.
 // It NEVER fires a duplicate auth call — it tees the response of the existing
 // failed login. Always returns nil so it never interrupts the request chain.
-func registerHVProbe(m *proton.Manager) {
+func registerHVProbe(m *proton.Manager) *hvCapture {
+	cap := &hvCapture{}
 	m.AddPostRequestHook(func(_ *resty.Client, resp *resty.Response) error {
 		if resp.StatusCode() != 422 {
 			return nil
@@ -76,9 +83,22 @@ func registerHVProbe(m *proton.Manager) {
 			return nil
 		}
 		if hv.Code == int(proton.HumanVerificationRequired) {
+			cap.Methods = hv.Details.HumanVerificationMethods
+			cap.Token = hv.Details.HumanVerificationToken
 			fmt.Printf("FINDING: HV required — methods=%v token-len=%d\n",
-				hv.Details.HumanVerificationMethods, len(hv.Details.HumanVerificationToken))
+				cap.Methods, len(cap.Token))
 		}
 		return nil
 	})
+	return cap
+}
+
+// hvPreRequestHook returns a resty middleware that injects the solved CAPTCHA
+// token headers into the next login retry.
+func hvPreRequestHook(solvedToken string) resty.RequestMiddleware {
+	return func(_ *resty.Client, req *resty.Request) error {
+		req.SetHeader("x-pm-human-verification-token", solvedToken)
+		req.SetHeader("x-pm-human-verification-token-type", "captcha")
+		return nil
+	}
 }
