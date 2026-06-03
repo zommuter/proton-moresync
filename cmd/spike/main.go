@@ -28,6 +28,7 @@ import (
 	"golang.org/x/term"
 )
 
+
 func die(step string, err error) {
 	fmt.Fprintf(os.Stderr, "FATAL %s: %v\n", step, err)
 	os.Exit(1)
@@ -46,56 +47,64 @@ func readSecret(prompt string) []byte {
 func main() {
 	ctx := context.Background()
 
-	username := os.Getenv("PROTON_USER")
-	if username == "" {
-		fmt.Print("Username: ")
-		fmt.Scan(&username)
-	}
-
-	password := []byte(os.Getenv("PROTON_PASS"))
-	if len(password) == 0 {
-		password = readSecret("Password: ")
-	}
-
 	// --- Connect ---
 	m := proton.New(proton.WithAppVersion("Other_0.1.0")) // platform must be a known value; "go" (default) is rejected
 	defer m.Close()
 
-	// --- Auth: token bypass or fresh login ---
-	// Fresh SRP login triggers a CAPTCHA on unknown clients.
-	// Set PROTON_UID + PROTON_ACCESS_TOKEN (from browser devtools) to bypass it:
-	//   1. Open mail.proton.me (already logged in)
-	//   2. DevTools → Network → any API request → Request Headers
-	//   3. Copy x-pm-uid → PROTON_UID
-	//   4. Copy Authorization header value (strip "Bearer ") → PROTON_ACCESS_TOKEN
+	// Tee the raw login-failure response so we can log HV methods if Proton
+	// demands human verification (code 9001). No duplicate call — pure tee.
+	registerHVProbe(m)
+
+	// The mailbox password unlocks private keys and is always needed for
+	// decryption, even when reusing a persisted session (session reuse only
+	// skips SRP/CAPTCHA, not the key-unlock step).
+	password := []byte(os.Getenv("PROTON_PASS"))
+	if len(password) == 0 {
+		password = readSecret("Password (for key unlock): ")
+	}
+	// In one-password mode mailboxPass == login password.
+	// Two-password mode overrides this below.
+	mailboxPass := password
+
+	// latestUID / latestRefresh track the current session tokens so we can
+	// persist them after a successful run (refresh tokens rotate per use).
+	var latestUID, latestRefresh string
+
 	var c *proton.Client
 
-	protonUID := os.Getenv("PROTON_UID")
-	protonToken := os.Getenv("PROTON_ACCESS_TOKEN")
+	// --- Try persisted session first ---
+	sess, sessErr := loadSession()
+	if sessErr != nil {
+		fmt.Fprintf(os.Stderr, "WARN: could not read session file: %v\n", sessErr)
+	}
+	if sess != nil {
+		refreshClient, refreshAuth, refreshErr := m.NewClientWithRefresh(ctx, sess.UID, sess.RefreshToken)
+		if refreshErr == nil {
+			fmt.Println("FINDING: session reused (no login, no CAPTCHA)")
+			c = refreshClient
+			latestUID = refreshAuth.UID
+			latestRefresh = refreshAuth.RefreshToken
+		} else {
+			fmt.Printf("FINDING: stored session stale — falling back to login (%v)\n", refreshErr)
+		}
+	}
 
-	// mailboxPass is needed for key unlock; initialised below.
-	var mailboxPass []byte
+	// --- Fresh login if no usable session ---
+	if c == nil {
+		username := os.Getenv("PROTON_USER")
+		if username == "" {
+			fmt.Print("Username: ")
+			fmt.Scan(&username)
+		}
 
-	if protonUID != "" && protonToken != "" {
-		fmt.Println("Using existing session from PROTON_UID + PROTON_ACCESS_TOKEN")
-		c = m.NewClient(protonUID, protonToken, "")
-		mailboxPass = password
-	} else {
-		var auth proton.Auth
-		var loginErr error
-		c, auth, loginErr = m.NewClientWithLogin(ctx, username, password)
+		loginClient, auth, loginErr := m.NewClientWithLogin(ctx, username, password)
 		if loginErr != nil {
 			var apiErr *proton.APIError
 			if errors.As(loginErr, &apiErr) && apiErr.Code == proton.HumanVerificationRequired {
-				fmt.Fprintln(os.Stderr, `
-CAPTCHA required. Fresh logins from unknown clients are blocked.
-Bypass by providing an existing session token:
-  1. Open https://mail.proton.me in your browser (stay logged in)
-  2. DevTools → Network tab → click any message/request
-  3. In "Request Headers" find:
-       x-pm-uid: <copy this>  → set PROTON_UID=<value>
-       Authorization: Bearer <copy this>  → set PROTON_ACCESS_TOKEN=<value>
-  4. Re-run: PROTON_UID=... PROTON_ACCESS_TOKEN=... go run ./cmd/spike`)
+				// registerHVProbe already logged the offered methods above.
+				fmt.Fprintln(os.Stderr,
+					"\nHV solve not implemented yet — check FINDING lines above for offered methods.\n"+
+						"Once the email or CAPTCHA solver is added, rerun.")
 				os.Exit(1)
 			}
 			die("login", loginErr)
@@ -104,19 +113,24 @@ Bypass by providing an existing session token:
 		// 2FA
 		if auth.TwoFA.Enabled&proton.HasTOTP != 0 {
 			totp := strings.TrimSpace(string(readSecret("TOTP code: ")))
-			if err := c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: totp}); err != nil {
+			if err := loginClient.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: totp}); err != nil {
 				die("2FA", err)
 			}
 		}
 
-		// One-password mode: mailbox passphrase == login password.
-		// Two-password mode: separate passphrase required (legacy accounts).
-		mailboxPass = password
+		// Two-password mode: separate mailbox passphrase (legacy accounts).
 		if auth.PasswordMode == proton.TwoPasswordMode {
 			mailboxPass = readSecret("Mailbox password (two-password mode): ")
 		}
+
+		c = loginClient
+		latestUID = auth.UID
+		latestRefresh = auth.RefreshToken
 	}
 	defer c.Close()
+
+	// Track any token rotations that happen during the run.
+	c.AddAuthHandler(func(a proton.Auth) { latestRefresh = a.RefreshToken })
 
 	user, err := c.GetUser(ctx)
 	if err != nil {
@@ -291,6 +305,12 @@ Bypass by providing an existing session token:
 
 	fmt.Println("\nFINDING: calendar event decrypt reached end — check output above for VEVENT data")
 	fmt.Println("\nSPIKE COMPLETE")
+
+	if err := saveSession(&Session{UID: latestUID, RefreshToken: latestRefresh}); err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: could not persist session: %v\n", err)
+	} else {
+		fmt.Printf("FINDING: session persisted → %s\n", sessionPath())
+	}
 }
 
 // decryptPart replicates CalendarEventPart.Decode but returns the decrypted string.
