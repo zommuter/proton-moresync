@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] **Phase 1: session storage hardening — verify unattended run.** Keyring backend implemented (`secrets.go`); run backup interactively once to store `salted_key_pass`, then verify `backup </dev/null` completes with zero prompts. — see docs/meeting-notes/2026-06-04-1140-session-storage-hardening.md <!-- id:8a70 -->
+- [x] **Phase 1: session storage hardening — verify unattended run.** Keyring backend implemented (`secrets.go`); run backup interactively once to store `salted_key_pass`, then verify `backup </dev/null` completes with zero prompts. — see docs/meeting-notes/2026-06-04-1140-session-storage-hardening.md <!-- id:8a70 --> — verified by user 2026-06-04
 - [ ] **Scheduling/trigger runner.** mbsync-hook pattern — script in repo, symlink into `.git/hooks` or systemd timer, journald-queryable. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:8af0 -->
 - [x] **Backup runbook.** Top-level doc referencing zkm (mail), rclone (drive), Pass export for full Proton coverage. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:22b4 --> — written at docs/proton-backup-runbook.md 2026-06-04
 - [ ] **Phase 2/3 north star (design later).** P2 = Radicale/vdirsyncer live-view; P3 = two-way, gated on rehearsal round-trip, contacts-write before calendar-write. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:e436 -->
