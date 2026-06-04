@@ -12,14 +12,13 @@ import (
 // solveCaptcha opens Proton's human-verification page top-level in the system
 // browser and waits for the user to solve the CAPTCHA and press ENTER.
 //
-// This mirrors exactly how Proton Bridge handles HV (internal/hv/hv.go):
-//   - Build https://verify.proton.me/?methods=<methods>&token=<token>
-//   - Open it top-level (no framing → frame-ancestors CSP never applies)
-//   - Wait for user confirmation; solving validates the token server-side
-//   - The caller retries login with the same challenge token verbatim
+// The URL pattern https://verify.proton.me/?methods=<methods>&token=<token>
+// is what Proton Bridge uses (internal/hv/hv.go::FormatHvURL). Opening it
+// top-level avoids the frame-ancestors CSP issue.
 //
-// Nothing is captured back from the browser; the solved token IS the original
-// challenge token — passing it again on retry is all that's needed.
+// NOTE: empirically this may NOT work if verify.proton.me does not post the
+// solve result back to Proton's API when opened standalone. Set PROTON_DEBUG=1
+// for verbose output to diagnose.
 func solveCaptcha(methods []string, hvToken string) error {
 	if len(methods) == 0 {
 		methods = []string{"captcha"}
@@ -29,14 +28,33 @@ func solveCaptcha(methods []string, hvToken string) error {
 		url.QueryEscape(strings.Join(methods, ",")) +
 		"&token=" + url.QueryEscape(hvToken)
 
-	fmt.Printf("\nHV required. Opening in browser:\n  %s\n", hvURL)
-	fmt.Println("Solve the CAPTCHA in the browser, then press ENTER here to continue.")
+	fmt.Printf("\nHV required. Token: %s... (len=%d)\n", truncate(hvToken, 8), len(hvToken))
+	fmt.Printf("Opening in browser:\n  %s\n\n", hvURL)
+	fmt.Println("The page should show a CAPTCHA puzzle (hCaptcha checkbox or image).")
+	fmt.Println("If you see an 'account recovery methods' page instead, the URL is wrong.")
+	fmt.Println("Solve it, then press ENTER here to retry login.")
+
 	if err := exec.Command("xdg-open", hvURL).Start(); err != nil {
 		fmt.Printf("(xdg-open failed: %v — open the URL above manually)\n", err)
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
-	fmt.Println("Continuing login...")
+	fmt.Printf("Retrying login with token: %s... (same challenge token, verbatim)\n", truncate(hvToken, 8))
 	return nil
+}
+
+// sessionImportHint prints instructions for seeding session.json from an
+// existing Proton client to bypass CAPTCHA entirely.
+func sessionImportHint() {
+	p := sessionPath()
+	fmt.Fprintf(os.Stderr, "\n--- Session import alternative ---\n")
+	fmt.Fprintf(os.Stderr, "If CAPTCHA solve keeps failing, seed a session from an existing Proton client:\n")
+	fmt.Fprintf(os.Stderr, "  1. Find UID + RefreshToken from Proton Bridge or browser DevTools:\n")
+	fmt.Fprintf(os.Stderr, "     Bridge config dir: ~/.config/protonmail/bridge-v3/ (keychain-backed)\n")
+	fmt.Fprintf(os.Stderr, "     Web: DevTools → Application → Cookies → proton.me → find refreshToken\n")
+	fmt.Fprintf(os.Stderr, "  2. Write %s:\n", p)
+	fmt.Fprintf(os.Stderr, `     {"uid":"<UID>","refresh_token":"<RefreshToken>"}`)
+	fmt.Fprintf(os.Stderr, "\n  3. Re-run the spike — it will reuse the session, no CAPTCHA needed.\n")
+	fmt.Fprintf(os.Stderr, "---\n\n")
 }

@@ -57,10 +57,20 @@ func saveSession(s *Session) error {
 	return os.WriteFile(p, data, 0600)
 }
 
-// hvCapture holds the token and methods captured from the first failed login.
+var debugMode = os.Getenv("PROTON_DEBUG") != ""
+
+func debugf(format string, args ...any) {
+	if debugMode {
+		fmt.Printf("DEBUG: "+format+"\n", args...)
+	}
+}
+
+// hvCapture holds the token and methods captured from the first failed login,
+// plus the raw body of the most recent 422 for post-mortem debugging.
 type hvCapture struct {
-	Methods []string
-	Token   string
+	Methods      []string
+	Token        string
+	Last422Body  []byte // raw body of the most recent 422 response (debug aid)
 }
 
 // hvResponse mirrors the Proton auth-failure JSON shape that go-proton-api drops.
@@ -92,6 +102,10 @@ func (t *hvCaptureTransport) RoundTrip(req *http.Request) (*http.Response, error
 	if readErr != nil {
 		return resp, nil
 	}
+	// Always stash the last 422 body so callers can print it on failure.
+	t.capture.Last422Body = body
+	debugf("422 body from %s: %s", req.URL.Path, body)
+
 	var hv hvResponse
 	if json.Unmarshal(body, &hv) == nil && hv.Code == int(proton.HumanVerificationRequired) {
 		t.capture.Methods = hv.Details.HumanVerificationMethods
@@ -129,6 +143,15 @@ func hvPreRequestHook(solvedToken string) resty.RequestMiddleware {
 	return func(_ *resty.Client, req *resty.Request) error {
 		req.SetHeader("x-pm-human-verification-token", solvedToken)
 		req.SetHeader("x-pm-human-verification-token-type", "captcha")
+		debugf("injecting HV headers on %s %s (token first 8: %s...)",
+			req.Method, req.URL, truncate(solvedToken, 8))
 		return nil
 	}
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }

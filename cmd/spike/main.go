@@ -112,6 +112,10 @@ func main() {
 				m.AddPreRequestHook(hvPreRequestHook(hv.Token))
 				loginClient, auth, loginErr = m.NewClientWithLogin(ctx, username, password)
 				if loginErr != nil {
+					if len(hv.Last422Body) > 0 {
+						fmt.Fprintf(os.Stderr, "DEBUG retry 422 body: %s\n", hv.Last422Body)
+					}
+					sessionImportHint()
 					die("login after CAPTCHA", loginErr)
 				}
 			} else {
