@@ -21,6 +21,7 @@ import (
 
 	"github.com/ProtonMail/gluon/async"
 	proton "github.com/ProtonMail/go-proton-api"
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 )
 
 func die(step string, err error) {
@@ -90,13 +91,31 @@ func main() {
 		die("salt key pass", err)
 	}
 
-	_, addrKRs, err := proton.Unlock(user, addresses, saltedKeyPass, async.NoopPanicHandler{})
+	userKR, addrKRs, err := proton.Unlock(user, addresses, saltedKeyPass, async.NoopPanicHandler{})
 	if err != nil {
 		die("unlock keys", err)
 	}
 	fmt.Printf("keys unlocked (%d address keyring(s))\n", len(addrKRs))
 
-	if err := backupContacts(ctx, c, addrKRs, *outDir); err != nil {
+	// contactKR = user key (decrypts encrypted cards) + all address keys (verifies signed cards).
+	contactKR, err := crypto.NewKeyRing(nil)
+	if err != nil {
+		die("new contact keyring", err)
+	}
+	for _, key := range userKR.GetKeys() {
+		if err := contactKR.AddKey(key); err != nil {
+			fmt.Fprintf(os.Stderr, "WARN: add user key to contactKR: %v\n", err)
+		}
+	}
+	for _, addrKR := range addrKRs {
+		for _, key := range addrKR.GetKeys() {
+			if err := contactKR.AddKey(key); err != nil {
+				fmt.Fprintf(os.Stderr, "WARN: add addr key to contactKR: %v\n", err)
+			}
+		}
+	}
+
+	if err := backupContacts(ctx, c, contactKR, *outDir); err != nil {
 		die("backup contacts", err)
 	}
 	if err := backupCalendars(ctx, c, addrKRs, addresses, *outDir); err != nil {

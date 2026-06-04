@@ -18,7 +18,9 @@ type contactMeta struct {
 	Version  int          `json:"version"`
 }
 
-func backupContacts(ctx context.Context, c *proton.Client, addrKRs map[string]*crypto.KeyRing, outDir string) error {
+// backupContacts fetches and decrypts all contacts. contactKR must combine the
+// user key (for encrypted cards) and all address keys (for signed cards).
+func backupContacts(ctx context.Context, c *proton.Client, contactKR *crypto.KeyRing, outDir string) error {
 	total, skipped := 0, 0
 	offset := 0
 	for {
@@ -27,7 +29,7 @@ func backupContacts(ctx context.Context, c *proton.Client, addrKRs map[string]*c
 			return fmt.Errorf("list contacts at offset %d: %w", offset, err)
 		}
 		for _, stub := range batch {
-			if err := writeContact(ctx, c, stub.ID, addrKRs, outDir); err != nil {
+			if err := writeContact(ctx, c, stub.ID, contactKR, outDir); err != nil {
 				fmt.Printf("  WARN: contact %s: %v\n", stub.ID, err)
 				skipped++
 				continue
@@ -43,22 +45,15 @@ func backupContacts(ctx context.Context, c *proton.Client, addrKRs map[string]*c
 	return nil
 }
 
-func writeContact(ctx context.Context, c *proton.Client, id string, addrKRs map[string]*crypto.KeyRing, outDir string) error {
+func writeContact(ctx context.Context, c *proton.Client, id string, contactKR *crypto.KeyRing, outDir string) error {
 	contact, err := c.GetContact(ctx, id)
 	if err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
 
-	var vc vcard.Card
-	var decErr error
-	for _, kr := range addrKRs {
-		vc, decErr = contact.Cards.Merge(kr)
-		if decErr == nil {
-			break
-		}
-	}
-	if decErr != nil {
-		return fmt.Errorf("decrypt (tried %d keyrings): %w", len(addrKRs), decErr)
+	vc, err := contact.Cards.Merge(contactKR)
+	if err != nil {
+		return fmt.Errorf("decrypt: %w", err)
 	}
 
 	uid := vcardUID(vc, id)
