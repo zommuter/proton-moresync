@@ -11,14 +11,18 @@ import (
 
 const keyringSvc = "proton-moresync"
 
+// errSessionLocked is returned when GetSalts fails with 9101 (locked scope after refresh).
+// The caller should purge the session, reconnect with a fresh login, and retry.
+var errSessionLocked = fmt.Errorf("session locked (9101)")
+
 // loadStoredSecrets returns whatever is in the keyring; missing entries are not errors.
-func loadStoredSecrets() (uid, refreshToken string, saltedKeyPass []byte, err error) {
+func loadStoredSecrets() (uid, refreshToken string, saltedKeyPass, mailboxPass []byte, err error) {
 	uid, err = keyring.Get(keyringSvc, "uid")
 	if errors.Is(err, keyring.ErrNotFound) {
 		uid, err = "", nil
 	}
 	if err != nil {
-		return "", "", nil, fmt.Errorf("keyring get uid: %w", err)
+		return "", "", nil, nil, fmt.Errorf("keyring get uid: %w", err)
 	}
 
 	refreshToken, err = keyring.Get(keyringSvc, "refresh_token")
@@ -26,25 +30,33 @@ func loadStoredSecrets() (uid, refreshToken string, saltedKeyPass []byte, err er
 		refreshToken, err = "", nil
 	}
 	if err != nil {
-		return "", "", nil, fmt.Errorf("keyring get refresh_token: %w", err)
+		return "", "", nil, nil, fmt.Errorf("keyring get refresh_token: %w", err)
 	}
 
 	b64, err := keyring.Get(keyringSvc, "salted_key_pass")
 	if errors.Is(err, keyring.ErrNotFound) {
 		err = nil
 	} else if err != nil {
-		return "", "", nil, fmt.Errorf("keyring get salted_key_pass: %w", err)
+		return "", "", nil, nil, fmt.Errorf("keyring get salted_key_pass: %w", err)
 	} else {
 		saltedKeyPass, err = base64.StdEncoding.DecodeString(b64)
 		if err != nil {
-			// Corrupted entry — treat as missing.
 			fmt.Fprintf(os.Stderr, "WARN: corrupted salted_key_pass in keyring, ignoring: %v\n", err)
 			saltedKeyPass = nil
 			err = nil
 		}
 	}
 
-	return uid, refreshToken, saltedKeyPass, nil
+	mbp, err := keyring.Get(keyringSvc, "mailbox_pass")
+	if errors.Is(err, keyring.ErrNotFound) {
+		err = nil
+	} else if err != nil {
+		return "", "", nil, nil, fmt.Errorf("keyring get mailbox_pass: %w", err)
+	} else {
+		mailboxPass = []byte(mbp)
+	}
+
+	return uid, refreshToken, saltedKeyPass, mailboxPass, nil
 }
 
 // saveSession stores uid + refresh_token in the keyring (replaces the file-based version).
@@ -67,6 +79,14 @@ func saveSaltedKeyPass(b []byte) error {
 	return nil
 }
 
+// saveMailboxPass stores the raw mailbox password in the keyring.
+func saveMailboxPass(b []byte) error {
+	if err := keyring.Set(keyringSvc, "mailbox_pass", string(b)); err != nil {
+		return fmt.Errorf("keyring set mailbox_pass: %w", err)
+	}
+	return nil
+}
+
 // purgeSession removes the session tokens from the keyring.
 func purgeSession() {
 	for _, user := range []string{"uid", "refresh_token"} {
@@ -78,7 +98,7 @@ func purgeSession() {
 
 // migratePlaintextSession imports session.json into the keyring on first run, then removes the file.
 func migratePlaintextSession() {
-	_, existingToken, _, err := loadStoredSecrets()
+	_, existingToken, _, _, err := loadStoredSecrets()
 	if err != nil || existingToken != "" {
 		return // keyring already populated or unreadable — nothing to migrate
 	}

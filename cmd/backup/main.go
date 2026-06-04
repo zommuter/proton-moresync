@@ -41,7 +41,7 @@ func main() {
 
 	migratePlaintextSession()
 
-	uid, refreshToken, storedSaltedKeyPass, err := loadStoredSecrets()
+	uid, refreshToken, storedSaltedKeyPass, storedMailboxPass, err := loadStoredSecrets()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "WARN: could not load keyring secrets: %v\n", err)
 	}
@@ -51,9 +51,20 @@ func main() {
 		if cachedPass != nil {
 			return cachedPass
 		}
+		// Prefer keyring > env > interactive prompt.
+		if len(storedMailboxPass) > 0 {
+			cachedPass = storedMailboxPass
+			return cachedPass
+		}
 		cachedPass = []byte(os.Getenv("PROTON_PASS"))
 		if len(cachedPass) == 0 {
 			cachedPass = readSecret("Password (for key unlock): ")
+		}
+		// Seed keyring so future headless runs can recover without stdin.
+		if len(cachedPass) > 0 {
+			if sErr := saveMailboxPass(cachedPass); sErr != nil {
+				fmt.Fprintf(os.Stderr, "WARN: save mailbox_pass: %v\n", sErr)
+			}
 		}
 		return cachedPass
 	}
@@ -73,13 +84,28 @@ func main() {
 	}
 
 	// Unlock keys: try the stored salted passphrase first (unattended happy path).
-	userKR, addrKRs, storedSaltedKeyPass, err := unlockKeys(ctx, c, user, addresses, mailboxPass, storedSaltedKeyPass, getPassword)
+	// On 9101 (locked session), unlockKeys purges the session and returns errSessionLocked;
+	// we reconnect via getPassword (uses stored mailbox_pass on headless) and retry once.
+	userKR, addrKRs, derivedSaltedKeyPass, err := unlockKeys(ctx, c, user, addresses, mailboxPass, storedSaltedKeyPass, getPassword)
+	if errors.Is(err, errSessionLocked) {
+		fmt.Fprintln(os.Stderr, "INFO: session locked — reconnecting with fresh login")
+		c.Close()
+		c, mailboxPass, err = connect(ctx, m, "", "", getPassword) // force fresh login
+		if err != nil {
+			die("reconnect after 9101", err)
+		}
+		user, addresses, err = getUserAndAddresses(ctx, c)
+		if err != nil {
+			die("get user/addresses (retry)", err)
+		}
+		userKR, addrKRs, derivedSaltedKeyPass, err = unlockKeys(ctx, c, user, addresses, mailboxPass, nil, getPassword)
+	}
 	if err != nil {
 		die("unlock keys", err)
 	}
-	// Persist the (possibly freshly derived) salted passphrase.
-	if storedSaltedKeyPass != nil {
-		if sErr := saveSaltedKeyPass(storedSaltedKeyPass); sErr != nil {
+	// Persist the (possibly freshly derived) salted passphrase + mailbox password.
+	if derivedSaltedKeyPass != nil {
+		if sErr := saveSaltedKeyPass(derivedSaltedKeyPass); sErr != nil {
 			fmt.Fprintf(os.Stderr, "WARN: save salted_key_pass: %v\n", sErr)
 		}
 	}
@@ -157,10 +183,9 @@ func unlockKeys(
 	if err != nil {
 		var apiErr *proton.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == 9101 {
-			// Session locked post-refresh — purge and report; caller must re-run.
-			fmt.Fprintln(os.Stderr, "WARN: session locked (9101) — purging keyring session; re-run to log in fresh")
+			fmt.Fprintln(os.Stderr, "WARN: session locked (9101) — purging keyring session; will reconnect")
 			purgeSession()
-			return nil, nil, nil, fmt.Errorf("session locked (9101) after purge: re-run to authenticate")
+			return nil, nil, nil, fmt.Errorf("%w: GetSalts", errSessionLocked)
 		}
 		return nil, nil, nil, fmt.Errorf("get key salts: %w", err)
 	}
