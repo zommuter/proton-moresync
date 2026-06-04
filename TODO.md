@@ -2,7 +2,7 @@
 
 ## Current
 
-- [ ] **One-time scheduling setup.** `ssh fievel git init --bare src/proton-backup.git`; init ~/proton-backup; seed keyring; install + enable timer. — see docs/meeting-notes/2026-06-04-1407-scheduling-trigger-runner.md <!-- id:4aae -->
+- [x] **One-time scheduling setup.** bare repo on fievel, ~/proton-backup seeded + pushed, EnvironmentFile config, Makefile install target, timer enabled. — see docs/meeting-notes/2026-06-04-1407-scheduling-trigger-runner.md <!-- id:4aae --> — completed 2026-06-04
 - [ ] **Phase 2/3 north star (design later).** P2 = Radicale/vdirsyncer live-view; P3 = two-way, gated on rehearsal round-trip, contacts-write before calendar-write. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:e436 -->
 - [ ] **Phase 1: investigate QR-code login.** Proton mobile apps support QR-code-based login (scan on phone → app grants session tokens to desktop). If go-proton-api exposes this flow it would replace CAPTCHA for headless/first-login use. Probe: search go-proton-api for `QRCode`/`SSO`/`ExternalSSO`; check Bridge for any equivalent; record whether it avoids HV entirely. <!-- id:761e -->
 ## Done
