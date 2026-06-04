@@ -80,7 +80,7 @@ func connect(ctx context.Context, m *proton.Manager, password []byte) (*proton.C
 
 	if sess != nil {
 		c, auth, err := m.NewClientWithRefresh(ctx, sess.UID, sess.RefreshToken)
-		if err == nil {
+		if err == nil && strings.Contains(auth.Scope, "full") {
 			fmt.Println("session reused")
 			_ = saveSession(&Session{UID: auth.UID, RefreshToken: auth.RefreshToken})
 			c.AddAuthHandler(func(a proton.Auth) {
@@ -88,7 +88,13 @@ func connect(ctx context.Context, m *proton.Manager, password []byte) (*proton.C
 			})
 			return c, mailboxPass, nil
 		}
-		fmt.Fprintf(os.Stderr, "WARN: stored session stale: %v\n", err)
+		if err == nil {
+			// Refreshed token has locked scope — must re-authenticate for key access.
+			fmt.Fprintf(os.Stderr, "WARN: refreshed session has scope %q — forcing fresh login\n", auth.Scope)
+			c.Close()
+		} else {
+			fmt.Fprintf(os.Stderr, "WARN: stored session stale: %v\n", err)
+		}
 	}
 
 	username := os.Getenv("PROTON_USER")
