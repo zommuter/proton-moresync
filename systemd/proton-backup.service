@@ -5,9 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-# Set your Proton account address here.
-# Session reuse + keyring cover the daily unattended happy path;
-# PROTON_USER is only needed on a fresh login (e.g. after session expiry).
-Environment=PROTON_USER=REPLACE_WITH_PROTON_ADDRESS
+# Personal config (PROTON_USER=you@proton.me) lives in ~/.config/proton-moresync/env,
+# which is not committed. Create it with: make install
+EnvironmentFile=%h/.config/proton-moresync/env
 ExecStart=%h/src/proton-moresync/proton-backup-sync.sh
 TimeoutStartSec=10min

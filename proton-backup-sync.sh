@@ -3,11 +3,12 @@
 # Safe to invoke concurrently and from non-interactive contexts.
 #
 # One-time setup: see docs/proton-backup-runbook.md § Scheduling.
-# Install: copy systemd/proton-backup.{service,timer} to ~/.config/systemd/user/
-#          and run: systemctl --user enable --now proton-backup.timer
+# Install: run `make install` — creates ~/.config/proton-moresync/env and enables the timer.
 set -u
 REPO="$HOME/src/proton-moresync"
-TREE="$HOME/proton-backup"
+# PROTON_BACKUP_DIR can be set in ~/.config/proton-moresync/env (via make install)
+# or overridden on the command line. Defaults to ~/proton-backup.
+TREE="${PROTON_BACKUP_DIR:-$HOME/proton-backup}"
 LOCK="$TREE/.proton-backup-sync.lock"
 
 # Ensure the lock file can be created (tree must exist).
