@@ -25,8 +25,8 @@ calendar/<cal-id>/<uid>.ics # vanilla RFC 5545
 
 | Phase | Status | Description |
 |-------|--------|-------------|
-| Spike | **next** | Decrypt one contact + one calendar event end-to-end |
-| 1 | planned | Read-only backup — full fetch+decrypt to versioned tree |
+| Spike | **done** | Contact + calendar decrypt both TURNKEY. Calendar key-unwrap turnkey. Session persisted. |
+| 1 | **next** | Read-only backup — full fetch+decrypt to versioned tree |
 | 2 | deferred | Read-only live view via Radicale/vdirsyncer/DAVx5 |
 | 3 | north star | Two-way sync; gated on rehearsal round-trip against test account; contacts-write before calendar-write |
 
@@ -40,6 +40,14 @@ calendar/<cal-id>/<uid>.ics # vanilla RFC 5545
 
 **In scope:** contacts + calendar only.
 **Out of scope:** mail (covered by protonmail-bridge + zkm/mbsync), Drive (rclone), Pass (manual export), zkm ingestion plugins (live in `~/src/zkm`).
+
+## Spike findings (2026-06-04)
+
+- **Contact decrypt:** `contact.Cards.Merge(kr)` is TURNKEY. Must iterate ALL `addrKRs` — contacts may be encrypted to any address key.
+- **Calendar decrypt:** FULLY TURNKEY: `GetCalendarPassphrase+Decrypt` → passphrase; `GetCalendarKeys+Unlock` → keyring; per-part `Decrypt` → VEVENT. No hand-assembly needed.
+- **`CalendarEventPart.Decode` bug:** value receiver discards decrypted data — must inline decrypt logic (see `decryptPart` in `cmd/spike/main.go`).
+- **CAPTCHA:** composite token `hvToken:prefix+hcaptchaResponse` required. Bare hvToken rejected. Session persistence (`NewClientWithRefresh`) makes CAPTCHA one-time-only. Phase 1 automation: chromedp.
+- **Session:** persisted at `~/.local/state/proton-moresync/session.json` (0600). Subsequent runs skip auth entirely.
 
 ## Related projects
 

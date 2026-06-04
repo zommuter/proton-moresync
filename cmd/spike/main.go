@@ -170,13 +170,6 @@ func main() {
 	}
 	fmt.Printf("FINDING: key unlock OK — %d address keyring(s)\n", len(addrKRs))
 
-	// firstAddrKR for contact decryption (contacts are encrypted to any address key).
-	var firstAddrKR *crypto.KeyRing
-	for _, kr := range addrKRs {
-		firstAddrKR = kr
-		break
-	}
-
 	// =========================================================================
 	// CONTACT
 	// =========================================================================
@@ -193,11 +186,19 @@ func main() {
 		if err != nil {
 			die("get contact", err)
 		}
-		vc, err := contact.Cards.Merge(firstAddrKR)
-		if err != nil {
-			fmt.Printf("FINDING: contact decrypt FAILED: %v\n", err)
+		// Try every address keyring — contacts may be encrypted to any address key.
+		var vc vcard.Card
+		var decErr error
+		for addrID, kr := range addrKRs {
+			vc, decErr = contact.Cards.Merge(kr)
+			if decErr == nil {
+				fmt.Printf("FINDING: contact decrypt OK (turnkey via Cards.Merge, addr %s)\n", addrID)
+				break
+			}
+		}
+		if decErr != nil {
+			fmt.Printf("FINDING: contact decrypt FAILED with all %d keyrings: %v\n", len(addrKRs), decErr)
 		} else {
-			fmt.Println("FINDING: contact decrypt OK (turnkey via Cards.Merge)")
 			var buf bytes.Buffer
 			if encErr := vcard.NewEncoder(&buf).Encode(vc); encErr != nil {
 				fmt.Printf("vCard encode error: %v\n", encErr)
