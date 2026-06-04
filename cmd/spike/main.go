@@ -6,8 +6,8 @@
 // If PROTON_PASS is unset you are prompted (echo-suppressed).
 // If your account uses two-password mode you are prompted for the mailbox password too.
 // If 2FA (TOTP) is enabled you are prompted for the code.
-// If Proton requires CAPTCHA, a browser window opens automatically; solve it and
-// the run continues without interaction.
+// If Proton requires CAPTCHA, a browser window opens to verify.proton.me; solve
+// it there, then press ENTER in the terminal to continue.
 //
 // Output: prints decrypted vCard + raw calendar event parts, plus FINDING: lines
 // that summarise whether each step was turnkey via go-proton-api or needed hand-assembly.
@@ -106,11 +106,10 @@ func main() {
 				if hv.Token == "" {
 					die("HV probe", fmt.Errorf("HV required but token not captured from response"))
 				}
-				solvedToken, solveErr := solveCaptcha(ctx, m, hv.Token)
-				if solveErr != nil {
+				if solveErr := solveCaptcha(hv.Methods, hv.Token); solveErr != nil {
 					die("CAPTCHA solve", solveErr)
 				}
-				m.AddPreRequestHook(hvPreRequestHook(solvedToken))
+				m.AddPreRequestHook(hvPreRequestHook(hv.Token))
 				loginClient, auth, loginErr = m.NewClientWithLogin(ctx, username, password)
 				if loginErr != nil {
 					die("login after CAPTCHA", loginErr)
