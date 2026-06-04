@@ -7,18 +7,21 @@ Plays the "mbsync role" — fetch + decrypt + emit standard files; ingestion int
 
 - **Language:** Go, using `github.com/ProtonMail/go-proton-api` (official Bridge library) + hydroxide's `protonmail` package for contact decryption
 - **Auth:** SRP + 2FA via go-proton-api
-- **Calendar decryption:** uncharted — the spike (`docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md`) must prove this end-to-end before Phase 1 build
+- **Calendar decryption:** TURNKEY via `GetCalendarPassphrase+Decrypt` → passphrase; `GetCalendarKeys+Unlock` → keyring; per-part inline decrypt (see `decryptPart` in `cmd/backup/calendar.go`)
 
 ## Output contract
 
 ```
-contacts/<uid>.vcf          # vanilla RFC 6350 — no Proton-specific extensions
-calendar/<cal-id>/<uid>.ics # vanilla RFC 5545
-.meta/<uid>.json            # Proton-specifics: object ID, ciphertext, version/key handle
+contacts/<uid>.vcf                    # vanilla RFC 6350 — no Proton-specific extensions
+calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
+.meta/contacts/<uid>.json             # Proton contact sidecar
+.meta/calendar/<cal-id>/<uid>.json    # Proton calendar event sidecar
 ```
 
 - `.vcf` and `.ics` files must be parseable by any standard-compliant client (no Proton fields inline)
-- `.meta/<uid>.json` is the only place Proton-specific data lives; keys: `proton_id`, `ciphertext`, `version`
+- `.meta/` sidecars are the only place Proton-specific data lives
+  - contacts: `proton_id`, `cards` (raw encrypted/signed card data — `[]{Type,Data,Signature}`), `version`
+  - events: `proton_id`, `calendar_id`, `shared_key_packet`, `calendar_key_packet`, `shared_events`, `calendar_events`, `version`
 - UIDs are the standard vCard/iCal UID fields, used as filenames
 
 ## Phases
@@ -26,7 +29,7 @@ calendar/<cal-id>/<uid>.ics # vanilla RFC 5545
 | Phase | Status | Description |
 |-------|--------|-------------|
 | Spike | **done** | Contact + calendar decrypt both TURNKEY. Calendar key-unwrap turnkey. Session persisted. |
-| 1 | **next** | Read-only backup — full fetch+decrypt to versioned tree |
+| 1 | **done** | Read-only backup — full fetch+decrypt to versioned tree |
 | 2 | deferred | Read-only live view via Radicale/vdirsyncer/DAVx5 |
 | 3 | north star | Two-way sync; gated on rehearsal round-trip against test account; contacts-write before calendar-write |
 
@@ -34,7 +37,7 @@ calendar/<cal-id>/<uid>.ics # vanilla RFC 5545
 
 - `github.com/ProtonMail/go-proton-api` — official Proton API client (auth, contacts, calendar endpoints)
 - `github.com/emersion/hydroxide/protonmail` — reference for contact E2E decryption
-- `github.com/ProtonMail/gopenpgp/v3` — E2E crypto primitives
+- `github.com/ProtonMail/gopenpgp/v2` — E2E crypto primitives (v2, not v3)
 
 ## Scope
 

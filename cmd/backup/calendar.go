@@ -14,9 +14,13 @@ import (
 )
 
 type eventMeta struct {
-	ProtonID   string `json:"proton_id"`
-	CalendarID string `json:"calendar_id"`
-	Version    int    `json:"version"`
+	ProtonID          string                     `json:"proton_id"`
+	CalendarID        string                     `json:"calendar_id"`
+	SharedKeyPacket   string                     `json:"shared_key_packet"`
+	CalendarKeyPacket string                     `json:"calendar_key_packet"`
+	SharedEvents      []proton.CalendarEventPart `json:"shared_events"`
+	CalendarEvents    []proton.CalendarEventPart `json:"calendar_events"`
+	Version           int                        `json:"version"`
 }
 
 func backupCalendars(ctx context.Context, c *proton.Client, addrKRs map[string]*crypto.KeyRing, addresses []proton.Address, outDir string) error {
@@ -138,7 +142,15 @@ func writeEvent(event proton.CalendarEvent, calID string, calKR, addrKR *crypto.
 		return fmt.Errorf("write .ics: %w", err)
 	}
 
-	meta := eventMeta{ProtonID: event.ID, CalendarID: calID, Version: 1}
+	meta := eventMeta{
+		ProtonID:          event.ID,
+		CalendarID:        calID,
+		SharedKeyPacket:   event.SharedKeyPacket,
+		CalendarKeyPacket: event.CalendarKeyPacket,
+		SharedEvents:      event.SharedEvents,
+		CalendarEvents:    event.CalendarEvents,
+		Version:           1,
+	}
 	metaData, _ := json.MarshalIndent(meta, "", "  ")
 	if err := writeFile(filepath.Join(outDir, ".meta", "calendar", calID, name+".json"), append(metaData, '\n')); err != nil {
 		return fmt.Errorf("write meta: %w", err)

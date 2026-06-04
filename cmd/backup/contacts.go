@@ -13,8 +13,9 @@ import (
 )
 
 type contactMeta struct {
-	ProtonID string `json:"proton_id"`
-	Version  int    `json:"version"`
+	ProtonID string       `json:"proton_id"`
+	Cards    proton.Cards `json:"cards"`
+	Version  int          `json:"version"`
 }
 
 func backupContacts(ctx context.Context, c *proton.Client, addrKRs map[string]*crypto.KeyRing, outDir string) error {
@@ -72,7 +73,7 @@ func writeContact(ctx context.Context, c *proton.Client, id string, addrKRs map[
 		return fmt.Errorf("write .vcf: %w", err)
 	}
 
-	meta := contactMeta{ProtonID: id, Version: 1}
+	meta := contactMeta{ProtonID: id, Cards: contact.Cards, Version: 1}
 	metaData, _ := json.MarshalIndent(meta, "", "  ")
 	if err := writeFile(filepath.Join(outDir, ".meta", "contacts", name+".json"), append(metaData, '\n')); err != nil {
 		return fmt.Errorf("write meta: %w", err)
