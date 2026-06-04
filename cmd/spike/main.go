@@ -24,6 +24,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/ProtonMail/gluon/async"
 	proton "github.com/ProtonMail/go-proton-api"
 	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	vcard "github.com/emersion/go-vcard"
@@ -52,10 +53,6 @@ func main() {
 	// --- Connect ---
 	m := proton.New(proton.WithAppVersion("Other_0.1.0")) // platform must be a known value; "go" (default) is rejected
 	defer m.Close()
-
-	// Tee the raw login-failure response so we can log and capture the HV token
-	// if Proton demands human verification (code 9001). No duplicate call — pure tee.
-	hv := registerHVProbe(m)
 
 	// The mailbox password unlocks private keys and is always needed for
 	// decryption, even when reusing a persisted session (session reuse only
@@ -102,20 +99,18 @@ func main() {
 		loginClient, auth, loginErr := m.NewClientWithLogin(ctx, username, password)
 		if loginErr != nil {
 			var apiErr *proton.APIError
-			if errors.As(loginErr, &apiErr) && apiErr.Code == proton.HumanVerificationRequired {
-				if hv.Token == "" {
-					die("HV probe", fmt.Errorf("HV required but token not captured from response"))
+			if errors.As(loginErr, &apiErr) && apiErr.IsHVError() {
+				hvDetails, hvErr := apiErr.GetHVDetails()
+				if hvErr != nil {
+					die("HV details", hvErr)
 				}
-				compositeToken, solveErr := solveCaptcha(hv.Methods, hv.Token)
+				compositeToken, solveErr := solveCaptcha(hvDetails.Methods, hvDetails.Token)
 				if solveErr != nil {
 					die("CAPTCHA solve", solveErr)
 				}
-				m.AddPreRequestHook(hvPreRequestHook(compositeToken))
-				loginClient, auth, loginErr = m.NewClientWithLogin(ctx, username, password)
+				hvDetails.Token = compositeToken
+				loginClient, auth, loginErr = m.NewClientWithLoginWithHVToken(ctx, username, password, hvDetails)
 				if loginErr != nil {
-					if len(hv.Last422Body) > 0 {
-						fmt.Fprintf(os.Stderr, "DEBUG retry 422 body: %s\n", hv.Last422Body)
-					}
 					sessionImportHint()
 					die("login after CAPTCHA", loginErr)
 				}
@@ -164,7 +159,7 @@ func main() {
 		die("compute salted key pass", err)
 	}
 
-	_, addrKRs, err := proton.Unlock(user, addresses, saltedKeyPass)
+	_, addrKRs, err := proton.Unlock(user, addresses, saltedKeyPass, async.NoopPanicHandler{})
 	if err != nil {
 		die("unlock keys", err)
 	}
