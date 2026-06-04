@@ -16,11 +16,7 @@ import (
 
 const appVersion = "Other_0.1.0"
 
-type Session struct {
-	UID          string `json:"uid"`
-	RefreshToken string `json:"refresh_token"`
-}
-
+// sessionPath returns the legacy plaintext session file path (used only for migration).
 func sessionPath() string {
 	base := os.Getenv("XDG_STATE_HOME")
 	if base == "" {
@@ -29,7 +25,13 @@ func sessionPath() string {
 	return filepath.Join(base, "proton-moresync", "session.json")
 }
 
-func loadSession() (*Session, error) {
+// legacySession is the old on-disk format, kept only for one-time migration.
+type legacySession struct {
+	UID          string `json:"uid"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+func loadLegacySession() (*legacySession, error) {
 	data, err := os.ReadFile(sessionPath())
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -37,23 +39,11 @@ func loadSession() (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	var s Session
+	var s legacySession
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, err
 	}
 	return &s, nil
-}
-
-func saveSession(s *Session) error {
-	p := sessionPath()
-	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
-		return err
-	}
-	data, err := json.Marshal(s)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(p, data, 0600)
 }
 
 func readSecret(prompt string) []byte {
@@ -67,29 +57,21 @@ func readSecret(prompt string) []byte {
 	return secret
 }
 
-// connect returns an authenticated client and the mailbox passphrase needed for
-// key unlock. Reuses a persisted session if available; falls back to fresh login.
-// Registers an auth handler that persists updated tokens on rotation.
-func connect(ctx context.Context, m *proton.Manager, password []byte) (*proton.Client, []byte, error) {
-	mailboxPass := password
-
-	sess, sessErr := loadSession()
-	if sessErr != nil {
-		fmt.Fprintf(os.Stderr, "WARN: could not read session file: %v\n", sessErr)
-	}
-
-	if sess != nil {
-		c, auth, err := m.NewClientWithRefresh(ctx, sess.UID, sess.RefreshToken)
+// connect returns an authenticated client and the mailbox passphrase needed for key unlock.
+// getPassword is called lazily — only when a fresh login (or two-password mode) is required.
+// Returns nil mailboxPass on session-reuse path; caller must use stored salted key passphrase.
+func connect(ctx context.Context, m *proton.Manager, uid, refreshToken string, getPassword func() []byte) (*proton.Client, []byte, error) {
+	if uid != "" && refreshToken != "" {
+		c, auth, err := m.NewClientWithRefresh(ctx, uid, refreshToken)
 		if err == nil && strings.Contains(auth.Scope, "full") {
 			fmt.Println("session reused")
-			_ = saveSession(&Session{UID: auth.UID, RefreshToken: auth.RefreshToken})
+			_ = saveSession(auth.UID, auth.RefreshToken)
 			c.AddAuthHandler(func(a proton.Auth) {
-				_ = saveSession(&Session{UID: a.UID, RefreshToken: a.RefreshToken})
+				_ = saveSession(a.UID, a.RefreshToken)
 			})
-			return c, mailboxPass, nil
+			return c, nil, nil // nil signals: use stored salted key passphrase
 		}
 		if err == nil {
-			// Refreshed token has locked scope — must re-authenticate for key access.
 			fmt.Fprintf(os.Stderr, "WARN: refreshed session has scope %q — forcing fresh login\n", auth.Scope)
 			c.Close()
 		} else {
@@ -103,6 +85,7 @@ func connect(ctx context.Context, m *proton.Manager, password []byte) (*proton.C
 		fmt.Scan(&username)
 	}
 
+	password := getPassword()
 	c, auth, err := m.NewClientWithLogin(ctx, username, password)
 	if err != nil {
 		var apiErr *proton.APIError
@@ -125,6 +108,7 @@ func connect(ctx context.Context, m *proton.Manager, password []byte) (*proton.C
 		}
 	}
 
+	mailboxPass := password
 	if auth.TwoFA.Enabled&proton.HasTOTP != 0 {
 		totp := strings.TrimSpace(string(readSecret("TOTP code: ")))
 		if err := c.Auth2FA(ctx, proton.Auth2FAReq{TwoFactorCode: totp}); err != nil {
@@ -136,9 +120,9 @@ func connect(ctx context.Context, m *proton.Manager, password []byte) (*proton.C
 		mailboxPass = readSecret("Mailbox password: ")
 	}
 
-	_ = saveSession(&Session{UID: auth.UID, RefreshToken: auth.RefreshToken})
+	_ = saveSession(auth.UID, auth.RefreshToken)
 	c.AddAuthHandler(func(a proton.Auth) {
-		_ = saveSession(&Session{UID: a.UID, RefreshToken: a.RefreshToken})
+		_ = saveSession(a.UID, a.RefreshToken)
 	})
 
 	return c, mailboxPass, nil

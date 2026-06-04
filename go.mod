@@ -20,11 +20,14 @@ require (
 	github.com/bradenaw/juniper v0.15.3 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cronokirby/saferith v0.33.0 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/emersion/go-message v0.18.2 // indirect
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
+	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/zalando/go-keyring v0.2.8 // indirect
 	gitlab.com/c0b/go-ordered-json v0.0.0-20201030195603-febf46534d5a // indirect
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
