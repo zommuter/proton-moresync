@@ -9,6 +9,8 @@
 - [ ] **Backup runbook.** Top-level doc referencing zkm (mail), rclone (drive), Pass export for full Proton coverage. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:22b4 -->
 - [ ] **Phase 2/3 north star (design later).** P2 = Radicale/vdirsyncer live-view; P3 = two-way, gated on rehearsal round-trip, contacts-write before calendar-write. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:e436 -->
 - [ ] **Cross-repo (zkm): generic `zkm-vcard` / `zkm-calendar` ingestion plugins.** Source-agnostic; one-liner forward-flag in zkm's TODO. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:eef8 -->
+- [ ] **Phase 1: fix app-version string for login alerts.** Login shows "unknown" in Proton's security notification. Research correct `x-pm-appversion` format for third-party clients (currently `Other_0.1.0` in `cmd/spike/main.go:53`); find a name that appears clearly in Proton's "new login" emails. <!-- id:da3a -->
+- [ ] **Phase 1: investigate QR-code login.** Proton mobile apps support QR-code-based login (scan on phone → app grants session tokens to desktop). If go-proton-api exposes this flow it would replace CAPTCHA for headless/first-login use. Probe: search go-proton-api for `QRCode`/`SSO`/`ExternalSSO`; check Bridge for any equivalent; record whether it avoids HV entirely. <!-- id:761e -->
 - [ ] **Phase 1: bump go-proton-api dep.** Pin to Bridge's master pseudo-version (`v0.4.1-0.20260424150947-6bf7f5a61eb8`); delete `hvCaptureTransport` workaround in favour of `GetHVDetails`/`NewClientWithLoginWithHVToken`. Deferred from spike. — see docs/meeting-notes/2026-06-04-0843-bridge-hv-research.md <!-- id:488c -->
 ## Done
 
