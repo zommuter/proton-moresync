@@ -19,16 +19,23 @@ This repo owns **contacts + calendar only**; all other types are covered elsewhe
 
 ### 1. Contacts + Calendar (this repo)
 
+Canonical backup tree: `~/proton-backup` (its own git repo, pushed to `fievel:src/proton-backup.git`).
+
+**Daily scheduled run (normal path):** handled by the systemd timer — no manual steps needed.
+
+**Manual run:**
 ```bash
-cd ~/src/proton-moresync
-./backup  # or: go run ./cmd/backup
+~/src/proton-moresync/proton-backup-sync.sh
 ```
 
-Session is persisted at `~/.local/state/proton-moresync/session.json` (0600).
-First run will prompt for Proton credentials + mailbox password + CAPTCHA (browser opens).
-Subsequent runs reuse the session — no CAPTCHA.
+**First run / fresh machine:** run the binary directly once so it can prompt for credentials +
+mailbox password (and CAPTCHA if the session is cold). Subsequent runs are unattended.
+```bash
+cd ~/src/proton-moresync && go build -o backup ./cmd/backup
+PROTON_USER=you@proton.me ./backup --output-dir ~/proton-backup
+```
 
-Output tree (git-versioned, typically at a path you configure):
+Output tree (git-versioned at `~/proton-backup`):
 ```
 contacts/<uid>.vcf
 calendar/<cal-id>/<uid>.ics
@@ -56,9 +63,50 @@ Store the export encrypted (e.g. `age -r <your-public-key> < pass-export.json > 
 
 ## Scheduling
 
-`proton-moresync` follows the mbsync-hook pattern (see TODO.md `id:8af0`):
-script in repo, trigger via `.git/hooks` or systemd timer, output piped through `systemd-cat`.
-This item is not yet implemented — see TODO.md for status.
+`proton-moresync` follows the **mbsync-hook pattern**: runner script in repo, fired by a
+systemd user timer, output captured in journald.
+
+### One-time setup
+
+```sh
+# a) Create bare repo on fievel (mirrors ~/mail → fievel:src/mail.git)
+ssh fievel git init --bare src/proton-backup.git
+
+# b) Initialise the local versioned tree
+git init ~/proton-backup
+git -C ~/proton-backup remote add origin fievel:src/proton-backup.git
+printf '.proton-backup-sync.lock\n' > ~/proton-backup/.gitignore
+git -C ~/proton-backup add .gitignore
+git -C ~/proton-backup commit -m "init"
+git -C ~/proton-backup push -u origin main
+
+# c) Seed keyring — one interactive run (prompts for password + CAPTCHA once)
+cd ~/src/proton-moresync && go build -o backup ./cmd/backup
+PROTON_USER=you@proton.me ./backup --output-dir ~/proton-backup
+git -C ~/proton-backup add -A
+git -C ~/proton-backup commit -m "initial proton backup"
+git -C ~/proton-backup push
+
+# d) Install and enable the timer
+#    Edit PROTON_USER in the .service file first.
+cp ~/src/proton-moresync/systemd/proton-backup.{service,timer} ~/.config/systemd/user/
+#    (open ~/.config/systemd/user/proton-backup.service and set PROTON_USER=you@proton.me)
+systemctl --user daemon-reload
+systemctl --user enable --now proton-backup.timer
+```
+
+### Monitoring
+
+```sh
+# See last run logs
+journalctl --user -u proton-backup.service -n 50
+
+# Check next scheduled fire
+systemctl --user list-timers | grep proton-backup
+
+# Run immediately (bypass timer)
+systemctl --user start proton-backup.service
+```
 
 ## Recovery
 

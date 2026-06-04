@@ -1,0 +1,13 @@
+[Unit]
+Description=proton-moresync contacts+calendar backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Set your Proton account address here.
+# Session reuse + keyring cover the daily unattended happy path;
+# PROTON_USER is only needed on a fresh login (e.g. after session expiry).
+Environment=PROTON_USER=REPLACE_WITH_PROTON_ADDRESS
+ExecStart=%h/src/proton-moresync/proton-backup-sync.sh
+TimeoutStartSec=10min

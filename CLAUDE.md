@@ -18,6 +18,8 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 .meta/calendar/<cal-id>/<uid>.json    # Proton calendar event sidecar
 ```
 
+- Canonical tree: `~/proton-backup` (its own git repo, pushed to `fievel:src/proton-backup.git` daily)
+- Runner script: `proton-backup-sync.sh` (repo root) fired by `systemd/proton-backup.timer`
 - `.vcf` and `.ics` files must be parseable by any standard-compliant client (no Proton fields inline)
 - `.meta/` sidecars are the only place Proton-specific data lives
   - contacts: `proton_id`, `cards` (raw encrypted/signed card data — `[]{Type,Data,Signature}`), `version`
