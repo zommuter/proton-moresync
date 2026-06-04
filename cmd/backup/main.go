@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -57,7 +58,31 @@ func main() {
 	}
 	salts, err := c.GetSalts(ctx)
 	if err != nil {
-		die("get key salts", err)
+		var apiErr *proton.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == 9101 {
+			// Refreshed session reports full scope but is still locked — purge and re-login.
+			fmt.Fprintln(os.Stderr, "WARN: session locked (9101) — purging session file and retrying with fresh login")
+			c.Close()
+			if rmErr := os.Remove(sessionPath()); rmErr != nil && !os.IsNotExist(rmErr) {
+				fmt.Fprintf(os.Stderr, "WARN: could not remove session file: %v\n", rmErr)
+			}
+			c, mailboxPass, err = connect(ctx, m, password)
+			if err != nil {
+				die("reconnect after locked session", err)
+			}
+			user, err = c.GetUser(ctx)
+			if err != nil {
+				die("get user (retry)", err)
+			}
+			addresses, err = c.GetAddresses(ctx)
+			if err != nil {
+				die("get addresses (retry)", err)
+			}
+			salts, err = c.GetSalts(ctx)
+		}
+		if err != nil {
+			die("get key salts", err)
+		}
 	}
 
 	saltedKeyPass, err := salts.SaltForKey(mailboxPass, user.Keys.Primary().ID)
