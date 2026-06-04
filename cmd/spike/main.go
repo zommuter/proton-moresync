@@ -106,10 +106,11 @@ func main() {
 				if hv.Token == "" {
 					die("HV probe", fmt.Errorf("HV required but token not captured from response"))
 				}
-				if solveErr := solveCaptcha(hv.Methods, hv.Token); solveErr != nil {
+				compositeToken, solveErr := solveCaptcha(hv.Methods, hv.Token)
+				if solveErr != nil {
 					die("CAPTCHA solve", solveErr)
 				}
-				m.AddPreRequestHook(hvPreRequestHook(hv.Token))
+				m.AddPreRequestHook(hvPreRequestHook(compositeToken))
 				loginClient, auth, loginErr = m.NewClientWithLogin(ctx, username, password)
 				if loginErr != nil {
 					if len(hv.Last422Body) > 0 {
