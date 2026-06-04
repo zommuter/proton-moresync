@@ -51,7 +51,9 @@ func main() {
 	ctx := context.Background()
 
 	// --- Connect ---
-	m := proton.New(proton.WithAppVersion("Other_0.1.0")) // platform must be a known value; "go" (default) is rejected
+	// "Other" is the correct platform for third-party clients; Proton displays it as "unknown" in security
+	// notifications — expected, no client-side fix available. "go" (go-proton-api default) is rejected by Proton.
+	m := proton.New(proton.WithAppVersion("Other_0.1.0"))
 	defer m.Close()
 
 	// The mailbox password unlocks private keys and is always needed for

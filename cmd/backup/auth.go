@@ -14,6 +14,10 @@ import (
 	"golang.org/x/term"
 )
 
+// appVersion is the x-pm-appversion header sent to Proton's API.
+// Format: <Platform>_<SemVer>. "Other" is the correct platform for third-party clients;
+// Proton displays it as "unknown" in security notifications — that is expected, no client-side fix exists.
+// "go" (the go-proton-api default) is rejected by Proton's API.
 const appVersion = "Other_0.1.0"
 
 // sessionPath returns the legacy plaintext session file path (used only for migration).
