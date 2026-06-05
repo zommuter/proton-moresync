@@ -12,3 +12,6 @@ session.json
 
 # local anonymization map — private, not published
 .anon-map
+
+# flock files from todo tooling
+*.lock
