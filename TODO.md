@@ -4,12 +4,14 @@
 
 - [x] **Publish to GitHub.** Add `github` remote and push. — see docs/meeting-notes/2026-06-05-1059-github-publishable.md <!-- id:f8fb --> — published 2026-06-05 at https://github.com/Zommuter/proton-moresync
 
+- [ ] **QR-login spike (adoption-triggered, deferred).** Once there is a first external user, probe whether an `Independent` fork with a generic/borrowed `ChildClientID` is accepted by `GET auth/v4/sessions/forks/{selector}`. Decrypt AES-GCM Payload under `sk` → `keyPassword`. Goal: documented yes/no on ChildClientID acceptance; no production code before probe. — see docs/meeting-notes/2026-06-05-1144-qr-login-session-fork.md <!-- id:96d7 -->
+
 - [ ] **Phase 2/3 north star (design later).** P2 = Radicale/vdirsyncer live-view; P3 = two-way, gated on rehearsal round-trip, contacts-write before calendar-write. — see docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md <!-- id:e436 -->
 
 ## Done
 
 - [x] **One-time scheduling setup.** bare repo on `<backup-host>`, ~/proton-backup seeded + pushed, EnvironmentFile config, Makefile install target, timer enabled. — see docs/meeting-notes/2026-06-04-1407-scheduling-trigger-runner.md <!-- id:4aae --> — completed 2026-06-04
-- [x] **Phase 1: investigate QR-code login.** Probed go-proton-api v0.4.1 and all Proton Go modules in cache for `QRCode`/`SSO`/`ExternalSSO`/`LoginToken`/`Fork` — zero matches. Feature is not exposed in the library; no client-side implementation path exists. CAPTCHA+session-reuse remains the only headless-first-login option. <!-- id:761e --> — probed 2026-06-04, closed as not available
+- [x] **Phase 1: investigate QR-code login.** QR sign-in IS the session-fork flow (`auth/v4/sessions/forks`, ForkType LOGIN='3') — authenticated phone authorizes fork, child gets `UID+RefreshToken+keyPassword` without SRP/2FA/CAPTCHA. Hand-rollable from WebClients TypeScript (`packages/shared/lib/api/auth.ts`), but absent from go-proton-api v0.4.0 and gated on an allowlisted `ChildClientID` (3rd-party has none). Deferred: revisit trigger = first external user (console-JS-injection bootstrap is the adoption blocker, not CAPTCHA). <!-- id:761e --> — investigated 2026-06-05, see docs/meeting-notes/2026-06-05-1144-qr-login-session-fork.md
 
 - [x] **Phase 1: session storage hardening — verify unattended run.** Keyring backend implemented (`secrets.go`); run backup interactively once to store `salted_key_pass`, then verify `backup </dev/null` completes with zero prompts. — see docs/meeting-notes/2026-06-04-1140-session-storage-hardening.md <!-- id:8a70 --> — verified by user 2026-06-04
 - [x] **Scheduling/trigger runner.** proton-backup-sync.sh + systemd/proton-backup.{service,timer} shipped; mirrors ~/mail pattern. — see docs/meeting-notes/2026-06-04-1407-scheduling-trigger-runner.md <!-- id:8af0 --> — implemented 2026-06-04
