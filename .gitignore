@@ -2,3 +2,13 @@
 /spike
 /backup
 *.log
+
+# real contact/calendar output — never commit
+/tmp/
+
+# runtime secrets — never commit
+session.json
+*.env
+
+# local anonymization map — private, not published
+.anon-map

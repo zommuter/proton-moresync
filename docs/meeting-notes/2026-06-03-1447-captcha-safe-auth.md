@@ -64,4 +64,4 @@
 ## Action items
 - [ ] Run spike cold (no session file) to collect `FINDING: HV required — methods=[...]` for this account — gates Phase 1 HV-solve choice. <!-- id:7668 -->
 - [ ] Phase 1: implement HV solve — email-code path if `email` in methods (cheap), else embedded-browser CAPTCHA. <!-- id:488c -->
-- [ ] Phase 1: evaluate session storage hardening — OS keyring (libsecret) vs age-encrypted file; note headless-box (cartmanjaro/fievel) friction. <!-- id:8a70 -->
+- [ ] Phase 1: evaluate session storage hardening — OS keyring (libsecret) vs age-encrypted file; note headless-box (<gateway>/<backup-host>) friction. <!-- id:8a70 -->

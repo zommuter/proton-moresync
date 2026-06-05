@@ -7,7 +7,7 @@ This repo owns **contacts + calendar only**; all other types are covered elsewhe
 
 | Type | Tool | Status | Notes |
 |------|------|--------|-------|
-| **Mail** | `protonmail-bridge` + `mbsync` → `~/src/zkm` | ✅ covered | mbsync pulls into maildir; zkm-eml ingests |
+| **Mail** | `protonmail-bridge` + `mbsync` | ✅ covered | mbsync pulls into maildir; downstream corpus tool ingests |
 | **Contacts** | `proton-moresync` (this repo) | ✅ Phase 1 done | `contacts/<uid>.vcf` + `.meta/contacts/<uid>.json` |
 | **Calendar** | `proton-moresync` (this repo) | ✅ Phase 1 done | `calendar/<cal-id>/<uid>.ics` + `.meta/calendar/<cal-id>/<uid>.json` |
 | **Drive** | `rclone` (protondrive backend) | ⚠️ beta/unmaintained | Use rclone if available; not a hard dependency |
@@ -19,7 +19,7 @@ This repo owns **contacts + calendar only**; all other types are covered elsewhe
 
 ### 1. Contacts + Calendar (this repo)
 
-Canonical backup tree: `~/proton-backup` (its own git repo, pushed to `fievel:src/proton-backup.git`).
+Canonical backup tree: `~/proton-backup` (its own git repo, pushed to `<backup-host>:src/proton-backup.git`).
 
 **Daily scheduled run (normal path):** handled by the systemd timer — no manual steps needed.
 
@@ -47,7 +47,7 @@ calendar/<cal-id>/<uid>.ics
 
 ```bash
 mbsync -a          # sync all configured IMAP sources
-zkm convert zkm-eml  # ingest into zkm corpus
+# ingest into your downstream corpus tool
 ```
 
 ### 3. Drive
@@ -69,12 +69,12 @@ systemd user timer, output captured in journald.
 ### One-time setup
 
 ```sh
-# a) Create bare repo on fievel (mirrors ~/mail → fievel:src/mail.git)
-ssh fievel git init --bare src/proton-backup.git
+# a) Create bare repo on <backup-host>
+ssh <backup-host> git init --bare src/proton-backup.git
 
 # b) Initialise the local versioned tree
 git init ~/proton-backup
-git -C ~/proton-backup remote add origin fievel:src/proton-backup.git
+git -C ~/proton-backup remote add origin <backup-host>:src/proton-backup.git
 printf '.proton-backup-sync.lock\n' > ~/proton-backup/.gitignore
 git -C ~/proton-backup add .gitignore
 git -C ~/proton-backup commit -m "init"
@@ -115,5 +115,5 @@ The backup is idempotent; re-running over an existing tree is safe (git will sho
 
 ## Related projects
 
-- `~/src/zkm` — corpus search; `zkm-vcard` / `zkm-calendar` plugins (V-prefix/C-prefix in zkm's TODO) will ingest this tree
+- Downstream corpus search tool — `vcard` / `calendar` ingestion plugins will ingest this tree
 - `rclone` — Drive backup

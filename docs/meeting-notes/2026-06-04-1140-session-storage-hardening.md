@@ -3,7 +3,7 @@
 **Started:** 2026-06-04 11:40
 **Session:** db6a5dc6-9452-4c20-867c-c6b7dacad2d8
 **Mode:** Class 2 planning record (no meeting was held — plan-mode output)
-**Topic:** Move secrets out of plaintext session.json into the OS keyring; enable unattended backup runs on zomni.
+**Topic:** Move secrets out of plaintext session.json into the OS keyring; enable unattended backup runs on <workstation>.
 
 ## Context
 
@@ -13,7 +13,7 @@ TODO `8a70` ("Phase 1: session storage hardening") is the prerequisite for the s
 
 ## Plan
 
-**Backend:** `github.com/zalando/go-keyring` (pure-Go Secret Service client) on zomni (XFCE with `gnome-keyring-daemon`). Headless backend explicitly deferred — cartmanjaro/fievel have no Secret Service daemon.
+**Backend:** `github.com/zalando/go-keyring` (pure-Go Secret Service client) on <workstation> (XFCE with `gnome-keyring-daemon`). Headless backend explicitly deferred — <gateway>/<backup-host> have no Secret Service daemon.
 
 **Secrets stored:** the *salted* key passphrase (output of `SaltForKey`) rather than the raw Proton password — narrower blast radius. The refresh token was already in the session file; it migrates to the keyring automatically.
 
@@ -33,7 +33,7 @@ TODO `8a70` ("Phase 1: session storage hardening") is the prerequisite for the s
 
 ## Decisions
 
-- **Keyring backend only (zomni).** No age/headless backend, no `SecretStore` interface — single machine, N=1.
+- **Keyring backend only (<workstation>).** No age/headless backend, no `SecretStore` interface — single machine, N=1.
 - **Store salted key passphrase, not raw password.** Documented escape hatch: swap one line in `saveSaltedKeyPass`/`loadStoredSecrets` to store raw password if salt approach proves brittle.
 - **Lazy password acquisition.** `getPassword` closure; no prompt on session-reuse + valid stored salt.
 - **Self-healing fallback.** Stale salt after key rotation logs WARN and re-derives automatically.

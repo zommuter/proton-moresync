@@ -1,7 +1,7 @@
 # proton-moresync
 
 Standalone Go CLI that backs up Proton contacts and calendar to a local, git-versioned tree.
-Plays the "mbsync role" — fetch + decrypt + emit standard files; ingestion into zkm is downstream.
+Plays the "mbsync role" — fetch + decrypt + emit standard files; ingestion into a downstream corpus tool is out of scope here.
 
 ## Architecture
 
@@ -18,7 +18,7 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 .meta/calendar/<cal-id>/<uid>.json    # Proton calendar event sidecar
 ```
 
-- Canonical tree: `~/proton-backup` (its own git repo, pushed to `fievel:src/proton-backup.git` daily)
+- Canonical tree: `~/proton-backup` (its own git repo, pushed to `<backup-host>:src/proton-backup.git` daily)
 - Runner script: `proton-backup-sync.sh` (repo root) fired by `systemd/proton-backup.timer`
 - `.vcf` and `.ics` files must be parseable by any standard-compliant client (no Proton fields inline)
 - `.meta/` sidecars are the only place Proton-specific data lives
@@ -44,7 +44,7 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 ## Scope
 
 **In scope:** contacts + calendar only.
-**Out of scope:** mail (covered by protonmail-bridge + zkm/mbsync), Drive (rclone), Pass (manual export), zkm ingestion plugins (live in `~/src/zkm`).
+**Out of scope:** mail (covered by protonmail-bridge + mbsync), Drive (rclone), Pass (manual export), downstream corpus ingestion plugins.
 
 ## Spike findings (2026-06-04)
 
@@ -56,9 +56,8 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 
 ## Related projects
 
-- `~/src/zkm` — corpus search; future `zkm-vcard` / `zkm-calendar` plugins will ingest this tree
-- `~/src/claude-diary` — diary; see `diary` branch
-- Backup runbook: TODO (will reference this project + zkm + rclone for full Proton coverage)
+- Downstream corpus search tool — future `vcard` / `calendar` ingestion plugins will ingest this tree
+- Backup runbook: `docs/proton-backup-runbook.md` — references this project + mbsync + rclone for full Proton coverage
 
 ## Founding meeting
 

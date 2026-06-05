@@ -40,7 +40,7 @@ fi
 #   Failure is silent: the commit is already local; the next run will push the backlog.
 if ssh-add -l >/dev/null 2>&1; then
   GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=10" \
-    timeout 60 ~/src/claude-diary/git-lock-push.sh -b 'origin main' \
+    timeout 60 git push origin main \
     || echo "proton-backup-sync: push failed or timed out — will retry next run"
 fi
 

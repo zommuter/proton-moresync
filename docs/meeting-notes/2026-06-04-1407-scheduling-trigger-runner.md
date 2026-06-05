@@ -16,9 +16,9 @@ The only gap is a wired-up scheduler so daily backups run without manual invocat
 
 **Approach selected:** mirror the existing `~/mail` backup pattern exactly.
 
-- Reference: `~/src/zomni/mail/mail-sync.sh` + `~/.config/systemd/user/mbsync.{service,timer}`.
-- `~/mail` pushes to `fievel:src/mail.git`; proton-backup follows the same model
-  (`fievel:src/proton-backup.git`).
+- Reference: `<your-mail-sync>/mail-sync.sh` + `~/.config/systemd/user/mbsync.{service,timer}`.
+- `~/mail` pushes to `<backup-host>:src/mail.git`; proton-backup follows the same model
+  (`<backup-host>:src/proton-backup.git`).
 - The canonical versioned tree is `~/proton-backup` — a *separate* git repo, not in the
   public code repo (which holds decrypted personal data).
 - cron was rejected: no session D-Bus → keyring locked → unattended run fails.
@@ -41,10 +41,10 @@ The only gap is a wired-up scheduler so daily backups run without manual invocat
 
 - **Canonical tree = `~/proton-backup`** (dedicated git repo, separate from public code repo).
   Decrypted personal data must not land in the code repo. *Out of scope: encryption-at-rest on
-  remote; fievel is trusted private storage, same model as ~/mail.*
+  remote; <backup-host> is trusted private storage, same model as ~/mail.*
 - **Trigger = systemd user timer** (`OnCalendar=daily`, `RandomizedDelaySec=1h`, `Persistent=true`).
   *Out of scope: cron (no D-Bus/keyring), git hooks (no hook point), hourly/weekly cadence.*
-- **Runner commits locally + pushes to `fievel:src/proton-backup.git`** when SSH key is loaded.
+- **Runner commits locally + pushes to `<backup-host>:src/proton-backup.git`** when SSH key is loaded.
   Push failure is silent (retry next run). *Out of scope: push encryption, encrypted remote.*
 - **`PROTON_USER` set in `.service` unit** (session reuse + keyring cover the daily happy path;
   env var only used on fresh login after expiry). *Out of scope: passing credentials any other way.*
@@ -53,4 +53,4 @@ The only gap is a wired-up scheduler so daily backups run without manual invocat
 
 ## Action items
 
-- [ ] One-time setup: `ssh fievel git init --bare src/proton-backup.git`; `git init ~/proton-backup`; seed keyring with one interactive run; push; install + enable timer. — see `docs/proton-backup-runbook.md § Scheduling` for exact commands. <!-- id:4aae -->
+- [ ] One-time setup: `ssh <backup-host> git init --bare src/proton-backup.git`; `git init ~/proton-backup`; seed keyring with one interactive run; push; install + enable timer. — see `docs/proton-backup-runbook.md § Scheduling` for exact commands. <!-- id:4aae -->
