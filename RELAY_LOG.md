@@ -26,3 +26,8 @@ Re-review marker retrofit: the 2026-06-13-1359 handoff was Opus standing in for 
 ## 2026-06-13 15:12 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
 
 review 20260613-1450: 1 commit audited clean (id:0ad0 sanitize verified green, genuine impl), only red test is EXPECTED-RED 3c7c, contract pointer v2 in sync, REVIEW_ME pruned
+
+## 2026-06-13 — executor (sonnet)
+
+Worked id:3c7c — added `test:` target to Makefile running `go vet ./...` then `go test ./...`; declared `.PHONY`; `TestMakefileHasTestTarget` went red→green; full `go test ./...` stays green; ticked checkbox in ROADMAP.md and decremented TODO.md ROADMAP count 5→4.
+Friction: none — well-scoped item, straightforward Makefile addition.

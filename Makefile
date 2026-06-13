@@ -2,7 +2,12 @@ SYSTEMD_USER := $(HOME)/.config/systemd/user
 CONFIG_DIR   := $(HOME)/.config/proton-moresync
 ENV_FILE     := $(CONFIG_DIR)/env
 
-.PHONY: build install enable disable uninstall
+.PHONY: build install enable disable uninstall test
+
+# Run vet and unit tests (CI-grade entry point).
+test:
+	go vet ./...
+	go test ./...
 
 build:
 	go build -o backup ./cmd/backup
