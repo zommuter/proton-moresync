@@ -18,3 +18,7 @@ executed id:0ad0 (sanitize hardening) full red→green→refactor — see below.
 ## 2026-06-13 13:59 — reviewer (claude-opus-4-8, fable-down pilot)
 
 Handoff C1–C5 (Opus pilot, Fable down): refreshed CLAUDE.md + new ARCHITECTURE.md (7 decisions), 6-item ROADMAP (2 ROUTINE/4 HARD), first test suite (red specs + regression coverage for already-correct UID/wrap helpers), @manual Gherkin (live-Proton CLI), 2 REVIEW_ME entries. C5 executed id:0ad0: sanitize path-traversal hardening red→green→refactor. go vet/build clean; only open item 3c7c (make test target) remains red.
+
+## 2026-06-13 14:18 — reviewer (claude-opus-4-8, fable-standin, opus-pilot)
+
+Re-review marker retrofit: the 2026-06-13-1359 handoff was Opus standing in for Fable (Fable outage). Prior tag label said 'fable-down pilot' which the id:9821 detection grep (fable-standin) misses. This checkpoint carries the literal marker so an independent Fable session re-reviews the full C1–C5 handoff. No code change. INDEPENDENT FABLE RE-REVIEW PENDING.
