@@ -18,7 +18,9 @@ Feature: Proton contacts + calendar backup CLI
     And the session secrets are written to the OS keyring
     And the command prints "backup complete"
 
-  @manual
+  # verified-by: proton-backup.timer — runs `./backup </dev/null` unattended daily;
+  # user-verified 2026-06-04 (id:8a70). Covered, not pending.
+  @manual @verified
   Scenario: Unattended re-run reuses the persisted session
     Given a previous successful run has populated the keyring
     When I run "./backup --output-dir ~/proton-backup </dev/null"

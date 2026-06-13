@@ -8,12 +8,20 @@ See `ARCHITECTURE.md` for design decisions (with rationale + rejected alternativ
 
 ## Status (2026-06-14)
 
-**WIP — not done.** A *baseline* backup runs unattended via the `proton-backup.timer`
-systemd unit (the first-run Proton CAPTCHA is a one-time interactive step, already solved;
-the keyring session persists). But the full backup feature and the `features/backup.feature`
-scenarios are **not yet complete or verified** — do **not** treat those `@manual` scenarios
-as passed. Relay handoff did the id:0ad0 sanitize hardening + a `make test` target; the
-substantive backup-tree/standards work remains open.
+**Phase 1 (read-only backup) is built and in use; Phase 2/3 are not.** The full
+read-only backup — fetch + decrypt all contacts and calendar events into a
+git-versioned standards-tree with sidecars — was implemented and **user-verified on
+2026-06-04** (id:5416, id:8a70), and runs **unattended daily** via the
+`proton-backup.timer` systemd unit (the first-run Proton CAPTCHA was a one-time
+interactive step, since solved; the keyring session persists). The `@manual`
+unattended-re-run scenario in `features/backup.feature` is therefore **covered** —
+`verified-by: proton-backup.timer` — not pending.
+
+What's genuinely open (all design/adoption-gated, see `ROADMAP.md`): Phase 2 live-view
+(id:d407), Phase 3 two-way sync (id:56c9), the QR-login/session-fork probe (id:5cc5,
+adoption-triggered), and a decryption-failure observability pass (id:0dfb). The
+remaining `@manual` scenarios that exercise rarer paths (first-run CAPTCHA on a clean
+machine, 9101 locked-session self-recovery) have not been re-run since the last refactor.
 
 ## Commands
 
