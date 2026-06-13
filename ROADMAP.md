@@ -10,7 +10,7 @@ is done when its item's tests go green plus a refactor pass, nothing else.
 
 ## Items
 
-- [ ] Harden `sanitize` against path traversal and reserved names [ROUTINE] <!-- id:0ad0 -->
+- [x] Harden `sanitize` against path traversal and reserved names [ROUTINE] <!-- id:0ad0 --> — done 2026-06-13 (C5; green)
   - **Acceptance**: `sanitize` never returns a value that can escape the output
     tree or collide with a filesystem-special name. Specifically: a UID of `..`,
     `.`, or any value containing a path separator must not yield a usable parent-
