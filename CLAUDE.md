@@ -3,6 +3,55 @@
 Standalone Go CLI that backs up Proton contacts and calendar to a local, git-versioned tree.
 Plays the "mbsync role" — fetch + decrypt + emit standard files; ingestion into a downstream corpus tool is out of scope here.
 
+See `ARCHITECTURE.md` for design decisions (with rationale + rejected alternatives) and
+`ROADMAP.md` for the executor task queue. `TODO.md` carries only a summary line.
+
+## Commands
+
+```sh
+go build -o backup ./cmd/backup   # build the CLI
+go test ./...                      # run the test suite (pure-logic helpers; no network)
+go vet ./...                       # static checks
+make build                         # = go build -o backup ./cmd/backup
+make install                       # install systemd user units + env file
+make enable                        # start the daily backup timer
+```
+
+The only built binary is `./backup` (from `cmd/backup`). `cmd/spike` is the original
+decrypt proof-of-concept, kept for reference; it is not part of the shipped product.
+
+## Testing
+
+Tests are plain Go (`go test ./...`), stdlib + testify-free. They cover the pure-logic
+helpers that need no Proton account, keyring, or network:
+
+- `sanitize` (filename safety — path traversal, reserved chars, empty UID)
+- `vcardUID` / `icsUID` (UID extraction with fallback)
+- `wrapVCalendar` (VCALENDAR envelope idempotence + VEVENT wrapping)
+
+Network/crypto/keyring paths (`connect`, `unlockKeys`, `backupContacts`,
+`backupCalendars`, `secrets.go`) are NOT unit-tested — they require a live Proton
+account and OS keyring. Verify those manually per `docs/proton-backup-runbook.md`
+and the `@manual` scenarios in BDD (see `features/`).
+
+## Gotchas (hard-won; do not rediscover)
+
+- **`appVersion` must be `Other_<SemVer>`** (`cmd/backup/auth.go`). The go-proton-api
+  default `"go"` is rejected by Proton's API; `Other` renders as "unknown" in Proton
+  security notifications — a Proton-side limitation, not a client bug.
+- **`CalendarEventPart.Decode` is broken upstream** (value receiver discards the
+  decrypted data). Always use the local `decryptPart` in `cmd/backup/calendar.go`.
+- **Contact decryption needs ALL address keyrings**, not just the primary — a contact
+  may be encrypted to any address key. `contactKR` combines the user key (decrypt) +
+  every address key (verify); see `main.go`.
+- **`gopenpgp/v2`, not v3** — the Proton fork pins v2 APIs; do not bump to v3.
+- **resty replace directive** in `go.mod` points at `github.com/ProtonMail/resty/v2`;
+  removing it breaks the build.
+- **Session 9101 (locked scope)** after refresh is handled by purge + fresh-login retry
+  in `main.go`; do not treat it as fatal.
+- **OS / tooling**: Manjaro — `pamac`, never `pacman -S`. Go toolchain is system-wide
+  (no `uv`; `uv` is for Python repos only). ISO-8601 dates, 24h, SI, de_CH context.
+
 ## Architecture
 
 - **Language:** Go, using `github.com/ProtonMail/go-proton-api` (official Bridge library) + hydroxide's `protonmail` package for contact decryption
@@ -62,3 +111,8 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 ## Founding meeting
 
 `docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md`
+
+## Relay contract <!-- fables-executor contract v2 -->
+
+This repo is managed by a reviewer/executor relay. Load the `fables-executor` skill
+(`/fables-executor`) before working on any item, then follow its rules exactly.
