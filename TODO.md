@@ -2,6 +2,8 @@
 
 ## Current
 
+- [ ] Relay: 8 open ROADMAP items <!-- id:2449 -->
+
 - [x] **Publish to GitHub.** Add `github` remote and push. — see docs/meeting-notes/2026-06-05-1059-github-publishable.md <!-- id:f8fb --> — published 2026-06-05 at https://github.com/Zommuter/proton-moresync
 
 - [ ] **QR-login spike (adoption-triggered, deferred).** Once there is a first external user, probe whether an `Independent` fork with a generic/borrowed `ChildClientID` is accepted by `GET auth/v4/sessions/forks/{selector}`. Decrypt AES-GCM Payload under `sk` → `keyPassword`. Goal: documented yes/no on ChildClientID acceptance; no production code before probe. — see docs/meeting-notes/2026-06-05-1144-qr-login-session-fork.md <!-- id:96d7 -->
