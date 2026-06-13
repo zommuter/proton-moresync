@@ -6,23 +6,6 @@ Plays the "mbsync role" — fetch + decrypt + emit standard files; ingestion int
 See `ARCHITECTURE.md` for design decisions (with rationale + rejected alternatives) and
 `ROADMAP.md` for the executor task queue. `TODO.md` carries only a summary line.
 
-## Status (2026-06-14)
-
-**Phase 1 (read-only backup) is built and in use; Phase 2/3 are not.** The full
-read-only backup — fetch + decrypt all contacts and calendar events into a
-git-versioned standards-tree with sidecars — was implemented and **user-verified on
-2026-06-04** (id:5416, id:8a70), and runs **unattended daily** via the
-`proton-backup.timer` systemd unit (the first-run Proton CAPTCHA was a one-time
-interactive step, since solved; the keyring session persists). The `@manual`
-unattended-re-run scenario in `features/backup.feature` is therefore **covered** —
-`verified-by: proton-backup.timer` — not pending.
-
-What's genuinely open (all design/adoption-gated, see `ROADMAP.md`): Phase 2 live-view
-(id:d407), Phase 3 two-way sync (id:56c9), the QR-login/session-fork probe (id:5cc5,
-adoption-triggered), and a decryption-failure observability pass (id:0dfb). The
-remaining `@manual` scenarios that exercise rarer paths (first-run CAPTCHA on a clean
-machine, 9101 locked-session self-recovery) have not been re-run since the last refactor.
-
 ## Commands
 
 ```sh
