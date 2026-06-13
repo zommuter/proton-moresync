@@ -26,7 +26,7 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     `sanitize` output is used as a filename component in `writeContact`/`writeEvent`.
     Keep the public behaviour (returns a string; `""` → `"unknown"`).
 
-- [ ] Add a CI-grade `make test` target and document it [ROUTINE] <!-- id:3c7c -->
+- [x] Add a CI-grade `make test` target and document it [ROUTINE] <!-- id:3c7c --> — done 2026-06-13 (C5; green)
   - **Acceptance**: `make test` runs `go vet ./...` then `go test ./...` and exits
     non-zero if either fails. `make build` still works. The target is listed in
     `make help` if a help target exists, otherwise in the Makefile's `.PHONY` line
