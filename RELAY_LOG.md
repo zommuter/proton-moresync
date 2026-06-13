@@ -14,3 +14,7 @@ specs. Genuinely-red ROUTINE items: `sanitize` path-traversal hardening (id:0ad0
 a `make test` target (id:3c7c). C4: `@manual` Gherkin (live Proton account needed, not
 automatable) + 2 REVIEW_ME entries on the sanitize-hardening interpretation. C5:
 executed id:0ad0 (sanitize hardening) full red→green→refactor — see below.
+
+## 2026-06-13 13:59 — reviewer (claude-opus-4-8, fable-down pilot)
+
+Handoff C1–C5 (Opus pilot, Fable down): refreshed CLAUDE.md + new ARCHITECTURE.md (7 decisions), 6-item ROADMAP (2 ROUTINE/4 HARD), first test suite (red specs + regression coverage for already-correct UID/wrap helpers), @manual Gherkin (live-Proton CLI), 2 REVIEW_ME entries. C5 executed id:0ad0: sanitize path-traversal hardening red→green→refactor. go vet/build clean; only open item 3c7c (make test target) remains red.
