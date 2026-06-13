@@ -26,34 +26,6 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     `sanitize` output is used as a filename component in `writeContact`/`writeEvent`.
     Keep the public behaviour (returns a string; `""` → `"unknown"`).
 
-- [ ] Unit-test `vcardUID` and `icsUID` fallback behaviour [ROUTINE] <!-- id:5334 -->
-  - **Acceptance**: `vcardUID` returns the card's `UID` field when present and
-    non-empty, else the fallback. `icsUID` returns the value of the first `UID:`
-    line (CRLF-tolerant), else the fallback; a UID with a trailing `\r` must be
-    returned without it. Empty / whitespace-only UIDs fall back.
-  - **Tests**: `cmd/backup/uid_test.go::TestVcardUIDPresent`,
-    `::TestVcardUIDFallback`, `::TestICSUIDFromContent`,
-    `::TestICSUIDCRLFTolerant`, `::TestICSUIDFallback` (marked `# roadmap:5334`) (currently RED)
-  - **Done-check**: `go test ./cmd/backup/ -run 'TestVcardUID|TestICSUID' -v`
-  - **Context**: `vcardUID` in `cmd/backup/contacts.go`, `icsUID` in
-    `cmd/backup/calendar.go`. Build a `vcard.Card` with
-    `github.com/emersion/go-vcard` (`vcard.Card{}` is a `map[string][]*vcard.Field`;
-    set `vcard.FieldUID`). NOTE: the CRLF-trailing-`\r` case is a JUDGMENT CALL —
-    see REVIEW_ME.md; the test encodes "strip the trailing CR".
-
-- [ ] Unit-test `wrapVCalendar` envelope handling [ROUTINE] <!-- id:a077 -->
-  - **Acceptance**: `wrapVCalendar` (a) returns the input unchanged if it already
-    contains `BEGIN:VCALENDAR`; (b) wraps a bare VEVENT body in a VCALENDAR envelope
-    with `VERSION:2.0` and the proton-moresync PRODID; (c) wraps non-VEVENT content
-    in `BEGIN:VEVENT`/`END:VEVENT` before the VCALENDAR envelope. Output is always
-    CRLF-terminated and parseable as one VCALENDAR.
-  - **Tests**: `cmd/backup/wrap_test.go::TestWrapVCalendarPassthrough`,
-    `::TestWrapVCalendarWrapsVEvent`, `::TestWrapVCalendarWrapsBareContent`
-    (marked `# roadmap:a077`) (currently RED)
-  - **Done-check**: `go test ./cmd/backup/ -run TestWrapVCalendar -v`
-  - **Context**: `wrapVCalendar` in `cmd/backup/calendar.go`. Pure string function,
-    no crypto. Assert on substring presence and `BEGIN:VCALENDAR` count == 1.
-
 - [ ] Add a CI-grade `make test` target and document it [ROUTINE] <!-- id:3c7c -->
   - **Acceptance**: `make test` runs `go vet ./...` then `go test ./...` and exits
     non-zero if either fails. `make build` still works. The target is listed in
@@ -103,6 +75,13 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     just a count printed to stdout). Options to weigh: exit non-zero above a
     threshold, write a `.meta/skipped.json` manifest, or stay advisory. Decision
     recorded with rationale before any behaviour change.
+
+## Regression coverage (no open item)
+
+`cmd/backup/uid_test.go` and `cmd/backup/wrap_test.go` cover `vcardUID`, `icsUID`,
+and `wrapVCalendar`, which were already correct at handoff. They are committed as
+green regression tests, not as item specs. Tokens `5334` and `a077` were originally
+earmarked for these and are now unused/free.
 
 ## Notes for executors
 
