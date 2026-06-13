@@ -22,3 +22,7 @@ Handoff C1–C5 (Opus pilot, Fable down): refreshed CLAUDE.md + new ARCHITECTURE
 ## 2026-06-13 14:18 — reviewer (claude-opus-4-8, fable-standin, opus-pilot)
 
 Re-review marker retrofit: the 2026-06-13-1359 handoff was Opus standing in for Fable (Fable outage). Prior tag label said 'fable-down pilot' which the id:9821 detection grep (fable-standin) misses. This checkpoint carries the literal marker so an independent Fable session re-reviews the full C1–C5 handoff. No code change. INDEPENDENT FABLE RE-REVIEW PENDING.
+
+## 2026-06-13 15:12 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
+
+review 20260613-1450: 1 commit audited clean (id:0ad0 sanitize verified green, genuine impl), only red test is EXPECTED-RED 3c7c, contract pointer v2 in sync, REVIEW_ME pruned
