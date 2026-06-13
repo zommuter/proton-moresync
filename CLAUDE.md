@@ -6,6 +6,15 @@ Plays the "mbsync role" — fetch + decrypt + emit standard files; ingestion int
 See `ARCHITECTURE.md` for design decisions (with rationale + rejected alternatives) and
 `ROADMAP.md` for the executor task queue. `TODO.md` carries only a summary line.
 
+## Status (2026-06-14)
+
+**WIP — not done.** A *baseline* backup runs unattended via the `proton-backup.timer`
+systemd unit (the first-run Proton CAPTCHA is a one-time interactive step, already solved;
+the keyring session persists). But the full backup feature and the `features/backup.feature`
+scenarios are **not yet complete or verified** — do **not** treat those `@manual` scenarios
+as passed. Relay handoff did the id:0ad0 sanitize hardening + a `make test` target; the
+substantive backup-tree/standards work remains open.
+
 ## Commands
 
 ```sh
