@@ -35,3 +35,7 @@ Friction: none — well-scoped item, straightforward Makefile addition.
 ## 2026-06-13 15:29 — executor (sonnet, relay-loop)
 
 executor: id:3c7c make test target — go vet + go test, all tests green
+
+## 2026-06-14 09:42 — reviewer (claude-opus-4-8, relay-loop)
+
+review 20260614-0942: 3 docs commits since fable-ckpt-1529 audited CLEAN — e67fde5 (WIP overstatement) → 1137ee5 (correct: Phase 1 done+verified, @verified annotation on unattended-re-run scenario in backup.feature) → 52b3c1a (drop CLAUDE.md Status block). Net diff = only features/backup.feature @manual→@manual @verified. User's 2026-06-14 memory feedback (feedback-relay-findings-flow-back) explicitly endorses BOTH 1137ee5 (@verified flow-back) and 52b3c1a (Status-block revert) by commit hash — this lands exactly where directed, not gaming. No test files touched/deleted; go test + make test green; contract pointer v2 in sync; README Phase-1-done consistent. ROADMAP unchanged: 2 ROUTINE closed, 4 HARD open (d407/56c9/5cc5/0dfb). routine_open=0.
