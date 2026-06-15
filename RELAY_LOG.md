@@ -60,3 +60,7 @@ review 20260614-0942: 3 docs commits since fable-ckpt-1529 audited clean (Status
 ## 2026-06-15 16:27 — strong-execute (claude-opus-4-8, fable-standin, relay-loop)
 
 relay(hard): C5 d407 — Phase 2 read-only live-view design picks Radicale (vdirsyncer→P3, DAVx5=client); spawned ROUTINE id:6aad
+
+## 2026-06-15 16:54 — executor (sonnet, relay-loop)
+
+id:6aad Phase 2 Radicale collection adapter green: generateRadicaleCollections + CLI sub-command + runbook section; 4 TestRadicale* pass; make test clean; routine_open=0
