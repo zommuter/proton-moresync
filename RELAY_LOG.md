@@ -43,3 +43,7 @@ review 20260614-0942: 3 docs commits since fable-ckpt-1529 audited CLEAN — e67
 ## 2026-06-14 09:47 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
 
 review 20260614-0942: 3 docs commits since fable-ckpt-1529 audited clean (Status add+revert + @verified flow-back), user-endorsed by hash, no test changes, go test + make test green, contract v2 in sync, routine_open=0
+
+## 2026-06-15 16:27 — strong-execute (claude-opus-4-8, fable-standin, relay-loop)
+
+relay(hard): C5 d407 — Phase 2 read-only live-view design picks Radicale (vdirsyncer→P3, DAVx5=client); spawned ROUTINE id:6aad
