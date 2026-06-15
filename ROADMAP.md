@@ -41,13 +41,45 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     `runtime.Caller` + walking up to the repo root, or via the `MORESYNC_ROOT`
     env var if set.
 
-- [ ] Phase 2 design: read-only live view (Radicale / vdirsyncer / DAVx5) [HARD — strong model] <!-- id:d407 -->
+- [x] Phase 2 design: read-only live view (Radicale / vdirsyncer / DAVx5) [HARD — strong model] <!-- id:d407 --> — done 2026-06-15 (design; Radicale picked, vdirsyncer deferred to P3, DAVx5 = consumer client; spawned id:6aad)
   - **Why HARD**: open-ended architecture choice across three external tools with
     different trust/deployment models; needs a design meeting, not a code change.
   - **Acceptance**: a meeting note under `docs/meeting-notes/` that picks ONE
     serving path (or explicitly defers with a trigger), records rationale + rejected
     alternatives, and either spawns sized `[ROUTINE]` follow-ups or sets a reopen
     trigger. No production code before the decision.
+  - **Decision**: `docs/meeting-notes/2026-06-15-1623-phase2-readonly-live-view.md` —
+    serving path = **Radicale** (CalDAV+CardDAV, read-from-disk); vdirsyncer is a
+    sync *client*, reclassified to Phase 3; DAVx5/Thunderbird/Apple are consumer
+    clients (no decision). Canonical `.vcf`/`.ics` tree stays untouched. Spawned the
+    sized ROUTINE id:6aad below.
+
+- [ ] Phase 2 Radicale collection adapter + config + runbook [ROUTINE] <!-- id:6aad -->
+  - **Acceptance**: a generator (Go in `cmd/backup` or a sibling, taking the backup
+    root + a Radicale collection root) materialises a **separate** Radicale collection
+    root that *references* the backup tree — a single address-book collection wrapping
+    `contacts/*.vcf`, and one calendar collection per `calendar/<cal-id>/` — emitting
+    the per-collection `.Radicale.props` markers (UUID + component-type: VADDRESSBOOK
+    vs VCALENDAR) **into the collection root only, NEVER into the git-versioned backup
+    tree**. Ship a documented read-only-localhost `radicale.conf` snippet and a runbook
+    section. Hard gates: (a) the canonical backup tree is byte-unchanged after running
+    the generator; (b) no network port is opened and no daemon is auto-started by the
+    backup timer / `proton-backup.service`; (c) the DAV server, if run, lives in its
+    own service (e.g. `proton-moresync-dav.service`) or a manual invocation, never
+    chained off the backup unit.
+  - **Tests**: a Go test (`# roadmap:6aad`) over a temp backup tree asserting: the
+    generated collection root contains one address-book collection + one calendar
+    collection per calendar dir; each carries a `.Radicale.props` with the correct
+    component type; the original `contacts/` and `calendar/` files are unmodified
+    (mtime/content) by the generator. Pure offline — no live account, no network, no
+    crypto. (currently RED — no generator exists yet)
+  - **Done-check**: `go test ./cmd/backup/ -run TestRadicale -v`
+  - **Context**: `docs/meeting-notes/2026-06-15-1623-phase2-readonly-live-view.md`
+    carries the full rationale and the rejected alternatives (vdirsyncer-as-server,
+    bare static HTTP, embedding a DAV server in the binary, re-laying-out the canonical
+    tree). Reference (symlink or copy-on-change) the backup files from the collection
+    root; do not duplicate or rewrite them. Read-only only — no write-back (that is
+    Phase 3, gated on the rehearsal harness, id:56c9).
 
 - [ ] Phase 3 design: two-way sync rehearsal harness [HARD — strong model] <!-- id:56c9 -->
   - **Why HARD**: write-back can corrupt a live Proton account; the rehearsal
