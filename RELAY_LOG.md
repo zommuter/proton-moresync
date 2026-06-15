@@ -64,3 +64,7 @@ relay(hard): C5 d407 — Phase 2 read-only live-view design picks Radicale (vdir
 ## 2026-06-15 16:54 — executor (sonnet, relay-loop)
 
 id:6aad Phase 2 Radicale collection adapter green: generateRadicaleCollections + CLI sub-command + runbook section; 4 TestRadicale* pass; make test clean; routine_open=0
+
+## 2026-06-15 17:11 — strong-execute (claude-opus-4-8, fable-standin, relay-loop)
+
+relay(hard): Phase 3 rehearsal-harness design (id:56c9) — round-trip gate + ordering specified, write path build-gated
