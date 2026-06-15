@@ -42,6 +42,9 @@ func main() {
 	}
 
 	outDir := flag.String("output-dir", ".", "directory to write backup tree")
+	maxSkipRate := flag.Float64("max-skip-rate", 1.0,
+		"exit non-zero if the fraction of objects skipped (decrypt/verify failures) "+
+			"exceeds this value; default 1.0 is advisory and never trips")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -136,14 +139,38 @@ func main() {
 		}
 	}
 
-	if err := backupContacts(ctx, c, contactKR, *outDir); err != nil {
+	// A single skipLog spans both backups so the manifest and the run-wide
+	// skip-rate gate see every skipped object (decrypt/verify failures, or a
+	// whole calendar that could not be unlocked).
+	var sl skipLog
+	contactsWritten, err := backupContacts(ctx, c, contactKR, *outDir, &sl)
+	if err != nil {
 		die("backup contacts", err)
 	}
-	if err := backupCalendars(ctx, c, addrKRs, addresses, *outDir); err != nil {
+	eventsWritten, err := backupCalendars(ctx, c, addrKRs, addresses, *outDir, &sl)
+	if err != nil {
 		die("backup calendars", err)
 	}
 
-	fmt.Println("backup complete")
+	// Observability: write (or clear) .meta/skipped.json so a partial backup is
+	// auditable, then decide whether to fail loudly. The manifest is always
+	// authoritative; the threshold gate is opt-in (default advisory).
+	if err := sl.writeManifest(*outDir); err != nil {
+		fmt.Fprintf(os.Stderr, "WARN: write skipped.json: %v\n", err)
+	}
+
+	written := contactsWritten + eventsWritten
+	skipped := sl.count()
+	fmt.Printf("backup complete: %d written, %d skipped\n", written, skipped)
+	if skipped > 0 {
+		fmt.Printf("  see .meta/skipped.json for the %d skipped object(s)\n", skipped)
+	}
+	if exceedsRate(skipped, written, *maxSkipRate) {
+		fmt.Fprintf(os.Stderr,
+			"FATAL skip-rate: %d/%d objects skipped exceeds --max-skip-rate=%g\n",
+			skipped, written+skipped, *maxSkipRate)
+		os.Exit(1)
+	}
 }
 
 // getUserAndAddresses fetches user + addresses.

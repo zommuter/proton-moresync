@@ -65,6 +65,7 @@ contacts/<uid>.vcf                    # vanilla RFC 6350 — no Proton-specific 
 calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 .meta/contacts/<uid>.json             # Proton contact sidecar
 .meta/calendar/<cal-id>/<uid>.json    # Proton calendar event sidecar
+.meta/skipped.json                    # partial-backup manifest (present only when a run skipped objects)
 ```
 
 - Canonical tree: `~/proton-backup` (its own git repo, pushed to `<backup-host>:src/proton-backup.git` daily)
@@ -74,6 +75,10 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
   - contacts: `proton_id`, `cards` (raw encrypted/signed card data — `[]{Type,Data,Signature}`), `version`
   - events: `proton_id`, `calendar_id`, `shared_key_packet`, `calendar_key_packet`, `shared_events`, `calendar_events`, `version`
 - UIDs are the standard vCard/iCal UID fields, used as filenames
+- Skips (decrypt/verify failures) are non-fatal and recorded in `.meta/skipped.json`
+  (`{total, entries:[{kind,id,reason}]}`), cleared on a clean run. `--max-skip-rate F`
+  (default 1.0 = advisory) makes a run exit non-zero when the skip fraction exceeds F
+  (see `skiplog.go`, id:0dfb)
 
 ## Phases
 

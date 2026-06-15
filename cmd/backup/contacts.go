@@ -19,18 +19,21 @@ type contactMeta struct {
 }
 
 // backupContacts fetches and decrypts all contacts. contactKR must combine the
-// user key (for encrypted cards) and all address keys (for signed cards).
-func backupContacts(ctx context.Context, c *proton.Client, contactKR *crypto.KeyRing, outDir string) error {
+// user key (for encrypted cards) and all address keys (for signed cards). Skipped
+// objects are recorded in sl (with their failure reason) for the manifest and the
+// run-wide skip-rate check; the count of objects written is returned.
+func backupContacts(ctx context.Context, c *proton.Client, contactKR *crypto.KeyRing, outDir string, sl *skipLog) (int, error) {
 	total, skipped := 0, 0
 	offset := 0
 	for {
 		batch, err := c.GetContacts(ctx, offset, pageSize)
 		if err != nil {
-			return fmt.Errorf("list contacts at offset %d: %w", offset, err)
+			return total, fmt.Errorf("list contacts at offset %d: %w", offset, err)
 		}
 		for _, stub := range batch {
 			if err := writeContact(ctx, c, stub.ID, contactKR, outDir); err != nil {
 				fmt.Printf("  WARN: contact %s: %v\n", stub.ID, err)
+				sl.add("contact", stub.ID, err.Error())
 				skipped++
 				continue
 			}
@@ -42,7 +45,7 @@ func backupContacts(ctx context.Context, c *proton.Client, contactKR *crypto.Key
 		offset += pageSize
 	}
 	fmt.Printf("contacts: %d written, %d skipped\n", total, skipped)
-	return nil
+	return total, nil
 }
 
 func writeContact(ctx context.Context, c *proton.Client, id string, contactKR *crypto.KeyRing, outDir string) error {

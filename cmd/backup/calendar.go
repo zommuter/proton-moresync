@@ -23,10 +23,15 @@ type eventMeta struct {
 	Version           int                        `json:"version"`
 }
 
-func backupCalendars(ctx context.Context, c *proton.Client, addrKRs map[string]*crypto.KeyRing, addresses []proton.Address, outDir string) error {
+// backupCalendars writes every calendar's events. Per-event skips are recorded
+// in sl (reason included) for the manifest and the run-wide skip-rate check; the
+// total number of events written across all calendars is returned. A
+// whole-calendar failure (key unlock, member match) is recorded as a single skip
+// against the calendar ID so it is never silently swallowed.
+func backupCalendars(ctx context.Context, c *proton.Client, addrKRs map[string]*crypto.KeyRing, addresses []proton.Address, outDir string, sl *skipLog) (int, error) {
 	calendars, err := c.GetCalendars(ctx)
 	if err != nil {
-		return fmt.Errorf("list calendars: %w", err)
+		return 0, fmt.Errorf("list calendars: %w", err)
 	}
 
 	addrByEmail := make(map[string]string)
@@ -34,19 +39,23 @@ func backupCalendars(ctx context.Context, c *proton.Client, addrKRs map[string]*
 		addrByEmail[addr.Email] = addr.ID
 	}
 
+	written := 0
 	for _, cal := range calendars {
 		fmt.Printf("calendar %q (%s)\n", cal.Name, cal.ID)
-		if err := backupCalendar(ctx, c, cal, addrKRs, addrByEmail, outDir); err != nil {
+		n, err := backupCalendar(ctx, c, cal, addrKRs, addrByEmail, outDir, sl)
+		written += n
+		if err != nil {
 			fmt.Printf("  WARN: %v\n", err)
+			sl.add("calendar", cal.ID, err.Error())
 		}
 	}
-	return nil
+	return written, nil
 }
 
-func backupCalendar(ctx context.Context, c *proton.Client, cal proton.Calendar, addrKRs map[string]*crypto.KeyRing, addrByEmail map[string]string, outDir string) error {
+func backupCalendar(ctx context.Context, c *proton.Client, cal proton.Calendar, addrKRs map[string]*crypto.KeyRing, addrByEmail map[string]string, outDir string, sl *skipLog) (int, error) {
 	members, err := c.GetCalendarMembers(ctx, cal.ID)
 	if err != nil {
-		return fmt.Errorf("get members: %w", err)
+		return 0, fmt.Errorf("get members: %w", err)
 	}
 
 	var memberID string
@@ -65,25 +74,25 @@ func backupCalendar(ctx context.Context, c *proton.Client, cal proton.Calendar, 
 		break
 	}
 	if memberID == "" {
-		return fmt.Errorf("no calendar member matches any local address")
+		return 0, fmt.Errorf("no calendar member matches any local address")
 	}
 
 	calPassphrase, err := c.GetCalendarPassphrase(ctx, cal.ID)
 	if err != nil {
-		return fmt.Errorf("get passphrase: %w", err)
+		return 0, fmt.Errorf("get passphrase: %w", err)
 	}
 	calPass, err := calPassphrase.Decrypt(memberID, calAddrKR)
 	if err != nil {
-		return fmt.Errorf("decrypt passphrase: %w", err)
+		return 0, fmt.Errorf("decrypt passphrase: %w", err)
 	}
 
 	calKeys, err := c.GetCalendarKeys(ctx, cal.ID)
 	if err != nil {
-		return fmt.Errorf("get keys: %w", err)
+		return 0, fmt.Errorf("get keys: %w", err)
 	}
 	calKR, err := calKeys.Unlock(calPass)
 	if err != nil {
-		return fmt.Errorf("unlock calendar keys: %w", err)
+		return 0, fmt.Errorf("unlock calendar keys: %w", err)
 	}
 
 	total, skipped := 0, 0
@@ -91,11 +100,12 @@ func backupCalendar(ctx context.Context, c *proton.Client, cal proton.Calendar, 
 	for {
 		events, err := c.GetCalendarEvents(ctx, cal.ID, offset, pageSize, url.Values{})
 		if err != nil {
-			return fmt.Errorf("list events at offset %d: %w", offset, err)
+			return total, fmt.Errorf("list events at offset %d: %w", offset, err)
 		}
 		for _, event := range events {
 			if err := writeEvent(event, cal.ID, calKR, calAddrKR, outDir); err != nil {
 				fmt.Printf("  WARN: event %s: %v\n", event.ID, err)
+				sl.add("event", event.ID, err.Error())
 				skipped++
 				continue
 			}
@@ -107,7 +117,7 @@ func backupCalendar(ctx context.Context, c *proton.Client, cal proton.Calendar, 
 		offset += pageSize
 	}
 	fmt.Printf("  %d events written, %d skipped\n", total, skipped)
-	return nil
+	return total, nil
 }
 
 func writeEvent(event proton.CalendarEvent, calID string, calKR, addrKR *crypto.KeyRing, outDir string) error {
