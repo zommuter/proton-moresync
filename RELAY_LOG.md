@@ -68,3 +68,7 @@ id:6aad Phase 2 Radicale collection adapter green: generateRadicaleCollections +
 ## 2026-06-15 17:11 — strong-execute (claude-opus-4-8, fable-standin, relay-loop)
 
 relay(hard): Phase 3 rehearsal-harness design (id:56c9) — round-trip gate + ordering specified, write path build-gated
+
+## 2026-06-15 17:45 — strong-execute (claude-opus-4-8, fable-standin, relay-loop)
+
+relay(hard): 0dfb decryption-failure observability — .meta/skipped.json manifest + opt-in --max-skip-rate gate (advisory default)
