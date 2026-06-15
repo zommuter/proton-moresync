@@ -49,10 +49,24 @@ the systemd timer) — no prompts.
   calendar/<cal-id>/<uid>.ics
   .meta/contacts/<uid>.json        # Proton object ID + raw card data
   .meta/calendar/<cal-id>/<uid>.json
+  .meta/skipped.json               # only present when a run skipped objects
 ```
 
 The backup tree is its own git repo. Re-running is idempotent: only real
 changes produce new commits.
+
+### Partial-backup observability
+
+Objects that fail to decrypt/verify (e.g. after a key rotation) are skipped, not
+fatal. Every skip is recorded in `.meta/skipped.json` (`{total, entries:[{kind,
+id, reason}]}`); the file is removed automatically on a clean run, so its mere
+presence flags a partial backup. The final line prints `backup complete: N
+written, M skipped`.
+
+By default skips are advisory. Pass `--max-skip-rate <fraction>` to make an
+unattended run fail loud — e.g. `--max-skip-rate 0.05` exits non-zero (so the
+systemd timer alerts) if more than 5% of objects were skipped. The default `1.0`
+never trips.
 
 ## Scheduled daily backups
 

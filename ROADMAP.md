@@ -109,7 +109,7 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     verified or refuted. No production code before the probe result. Gated on a
     first external user (TODO id:96d7).
 
-- [ ] Decryption-failure observability pass [HARD — strong model] <!-- id:0dfb -->
+- [x] Decryption-failure observability pass [HARD — strong model] <!-- id:0dfb --> — done 2026-06-15 (manifest + opt-in threshold; advisory default per observe-before-preventing)
   - **Why HARD**: deciding what "acceptable skip rate" means and whether a partial
     backup should fail loudly is a policy judgment, not a mechanical change.
   - **Acceptance**: a design note + minimal implementation deciding how
@@ -117,6 +117,10 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     just a count printed to stdout). Options to weigh: exit non-zero above a
     threshold, write a `.meta/skipped.json` manifest, or stay advisory. Decision
     recorded with rationale before any behaviour change.
+  - **Done**: chose manifest (`.meta/skipped.json`, always written/cleared) +
+    opt-in `--max-skip-rate` (default 1.0 advisory). See
+    `docs/meeting-notes/2026-06-15-1613-decryption-failure-observability.md`,
+    `cmd/backup/skiplog.go`, tests `cmd/backup/skiplog_test.go` (`# roadmap:0dfb`).
 
 ## Regression coverage (no open item)
 
