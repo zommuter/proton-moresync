@@ -34,6 +34,13 @@ func die(step string, err error) {
 }
 
 func main() {
+	// Sub-command dispatch: "gen-radicale-collections" runs the Phase 2
+	// Radicale collection adapter and exits, with no Proton API access needed.
+	if len(os.Args) > 1 && os.Args[1] == "gen-radicale-collections" {
+		runGenRadicaleCollections(os.Args[2:])
+		return
+	}
+
 	outDir := flag.String("output-dir", ".", "directory to write backup tree")
 	flag.Parse()
 

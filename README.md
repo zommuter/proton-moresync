@@ -82,7 +82,7 @@ coverage table for all Proton data types.
 |-------|--------|-------------|
 | Spike | done | End-to-end decrypt verified (contacts + calendar). |
 | 1 | done | Read-only backup — full fetch+decrypt to git-versioned tree. |
-| 2 | deferred | Read-only live view via Radicale/vdirsyncer/DAVx5. |
+| 2 | in progress | Read-only live view via Radicale (CardDAV+CalDAV); collection adapter done. See [runbook](docs/proton-backup-runbook.md#phase-2--read-only-live-view-via-radicale-carddav--caldav). |
 | 3 | north star | Two-way sync; gated on rehearsal round-trip against test account. |
 
 ## Dependencies
