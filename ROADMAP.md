@@ -81,7 +81,7 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     root; do not duplicate or rewrite them. Read-only only — no write-back (that is
     Phase 3, gated on the rehearsal harness, id:56c9).
 
-- [ ] Phase 3 design: two-way sync rehearsal harness [HARD — strong model] <!-- id:56c9 -->
+- [x] Phase 3 design: two-way sync rehearsal harness [HARD — strong model] <!-- id:56c9 --> — done 2026-06-15 (design; 5-step round-trip protocol, semantic baseline-(b) gate + allow-changed list + decrypt/verify clause, re-encrypt-not-replay, throwaway account under distinct keyring service, contacts-before-calendar ordering justified by key-model complexity, modify-only scope fence; write path build-gated on a throwaway-account reopen trigger)
   - **Why HARD**: write-back can corrupt a live Proton account; the rehearsal
     round-trip protocol and the contacts-before-calendar ordering are safety-critical
     judgment calls.
@@ -89,6 +89,16 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     (read → modify → write → read-back-identical) and its pass/fail gate, with the
     contacts-write-first ordering justified. No write path is implemented until the
     rehearsal harness exists and is gated green.
+  - **Decision**: `docs/meeting-notes/2026-06-15-1707-phase3-rehearsal-harness.md` —
+    5-step per-object round-trip (backup→modify-one-field→write-back-via-re-encryption→
+    re-backup→assert); pass/fail = semantic field-set equality on the object under test
+    (modulo a reviewed allow-changed list for server bookkeeping) + byte-identical
+    bystander sidecars + re-fetched object still decrypts & verifies; write step must
+    exercise the encrypt/sign path, never replay stored ciphertext; throwaway account
+    under a distinct `proton-moresync-rehearsal` keyring service, live round-trip
+    `@manual`, gate logic offline-testable; contacts-write-first justified by key-model
+    complexity; modify-only scope (create/delete fenced out). Write path build-gated —
+    reopen when a disposable test account exists and Phase 3 is wanted; no ids minted yet.
 
 - [ ] QR-login / session-fork probe (adoption-triggered) [HARD — strong model] <!-- id:5cc5 -->
   - **Why HARD**: requires probing Proton's `auth/v4/sessions/forks/{selector}`

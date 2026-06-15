@@ -131,3 +131,14 @@ allowlisted client ID and no current second user.
 not attempted until a throwaway test account proves the round-trip (read → modify →
 write → read-back-identical). Contacts-write lands before calendar-write because the
 contact card model is simpler and lower-risk than the calendar key-packet model.
+
+**Gate spec (design-complete, build-gated).** The rehearsal round-trip protocol,
+its pass/fail criteria (semantic field-set equality on the object under test modulo a
+reviewed allow-changed list; byte-identical bystander sidecars; re-fetched object still
+decrypts and verifies), the write-step-must-re-encrypt-not-replay rule, the throwaway
+test-account isolation (distinct `proton-moresync-rehearsal` keyring service; live
+round-trip `@manual`), the contacts-before-calendar ordering justification, and the
+modify-only scope fence (create/delete out) are specified in
+`docs/meeting-notes/2026-06-15-1707-phase3-rehearsal-harness.md` (id:56c9). No write
+path is built until that harness is green against a disposable account; reopen trigger =
+a throwaway test account exists and Phase 3 write-back is wanted.
