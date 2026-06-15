@@ -113,6 +113,132 @@ systemctl --user start proton-backup.service
 To reconstruct contacts/calendar from scratch: delete the output tree and re-run `./backup`.
 The backup is idempotent; re-running over an existing tree is safe (git will show only real diffs).
 
+## Phase 2 — read-only live view via Radicale (CardDAV + CalDAV)
+
+Radicale is a minimal CalDAV+CardDAV server that can serve the backup tree
+read-only to any DAV client (phone, Thunderbird, Apple Contacts / Calendar).
+The backup timer and the DAV server are **completely independent**: a stopped or
+crashed Radicale never affects backup runs, and vice versa.
+
+### How it works
+
+The `gen-radicale-collections` sub-command (see below) materialises a separate
+**Radicale collection root** — a directory that Radicale will serve — by:
+
+1. Creating a `contacts/` collection directory with a `.Radicale.props` marker
+   (`"tag":"VADDRESSBOOK"`).
+2. Creating a `calendar/<cal-id>/` collection directory per Proton calendar, each
+   with a `.Radicale.props` marker (`"tag":"VCALENDAR"`).
+3. Symlinking the canonical `.vcf` / `.ics` files into those collection directories.
+
+The **canonical backup tree** (`~/proton-backup`) is **never modified**. The
+`.Radicale.props` markers and symlinks live in a separate collection root
+(e.g. `~/proton-radicale-coll`) and are never committed to git.
+
+### 1. Generate the collection root
+
+After each backup run (or on demand):
+
+```bash
+# Build the generator (included in the main binary as a sub-command).
+cd ~/src/proton-moresync && go build -o backup ./cmd/backup
+
+# Generate (or regenerate) the Radicale collection root.
+# Re-running is safe and idempotent.
+./backup gen-radicale-collections \
+  --backup-dir ~/proton-backup \
+  --collection-root ~/proton-radicale-coll
+```
+
+### 2. Install Radicale
+
+```bash
+# Install as a Python user package — no system packages, no sudo.
+pip install --user radicale
+# or: uv pip install radicale
+```
+
+### 3. radicale.conf — read-only localhost snippet
+
+Save as `~/.config/radicale/config` (or pass with `--config`):
+
+```ini
+[server]
+# Bind to loopback only — not exposed to the network.
+hosts = 127.0.0.1:5232
+
+[auth]
+# No authentication — localhost-only, read access only.
+type = none
+
+[storage]
+# Point at the generated collection root (NOT the git backup tree).
+filesystem_folder = ~/proton-radicale-coll
+
+[rights]
+# Read-only access for all principals.
+type = owner_only
+```
+
+> **Security note**: this config serves on localhost only with no auth.
+> Do NOT change `hosts` to `0.0.0.0` without adding TLS + authentication.
+
+### 4. Start Radicale manually
+
+```bash
+python -m radicale --config ~/.config/radicale/config
+```
+
+Radicale will print the server URL:
+```
+Radicale server starting — http://127.0.0.1:5232/
+```
+
+### 5. Configure your DAV client
+
+| Client | Server URL |
+|--------|-----------|
+| DAVx5 (Android) | `http://127.0.0.1:5232/` (or LAN IP for phone access) |
+| Thunderbird | `http://127.0.0.1:5232/contacts/` and `http://127.0.0.1:5232/calendar/<cal-id>/` |
+| Apple Contacts / Calendar (macOS) | `http://127.0.0.1:5232/` |
+
+Leave username/password blank (no auth configured).
+
+### 6. Optional: long-running systemd user service
+
+To keep Radicale running as a user service — **separate from** `proton-backup.service`:
+
+```bash
+# Save as ~/.config/systemd/user/proton-moresync-dav.service
+cat > ~/.config/systemd/user/proton-moresync-dav.service <<'EOF'
+[Unit]
+Description=Radicale DAV server (proton-moresync read-only live view)
+After=network.target
+
+[Service]
+ExecStart=%h/.local/bin/python -m radicale --config %h/.config/radicale/config
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user enable --now proton-moresync-dav.service
+journalctl --user -u proton-moresync-dav.service -f
+```
+
+The service is **opt-in** and is never chained off `proton-backup.service`.
+
+### Constraints (enforced by id:6aad)
+
+- The canonical backup tree (`~/proton-backup`) is byte-unchanged by the generator.
+- `.Radicale.props` markers are written to the collection root only — never inside
+  the git-versioned backup tree.
+- No network port is opened and no daemon is auto-started by the backup timer or
+  `proton-backup.service`.
+- Radicale is read-only (no write-back path exists until Phase 3).
+
 ## Related projects
 
 - Downstream corpus search tool — `vcard` / `calendar` ingestion plugins will ingest this tree

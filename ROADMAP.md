@@ -54,7 +54,7 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     clients (no decision). Canonical `.vcf`/`.ics` tree stays untouched. Spawned the
     sized ROUTINE id:6aad below.
 
-- [ ] Phase 2 Radicale collection adapter + config + runbook [ROUTINE] <!-- id:6aad -->
+- [x] Phase 2 Radicale collection adapter + config + runbook [ROUTINE] <!-- id:6aad --> — done 2026-06-15 (C5; green)
   - **Acceptance**: a generator (Go in `cmd/backup` or a sibling, taking the backup
     root + a Radicale collection root) materialises a **separate** Radicale collection
     root that *references* the backup tree — a single address-book collection wrapping

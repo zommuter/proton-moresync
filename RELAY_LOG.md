@@ -1,5 +1,18 @@
 # Relay log <!-- merge=union; append-only — never edit or reorder past entries -->
 
+## 2026-06-15 — executor (sonnet)
+
+Worked id:6aad — Phase 2 Radicale collection adapter red→green→refactor.
+Implemented generateRadicaleCollections(backupRoot, collRoot) in cmd/backup/radicale.go:
+creates a separate Radicale collection root with one VADDRESSBOOK collection (contacts/)
+and one VCALENDAR collection per Proton calendar directory, emitting .Radicale.props JSON
+markers and symlinking canonical .vcf/.ics files. The backup tree is never modified.
+Added CLI sub-command dispatch in main.go (gen-radicale-collections --backup-dir --collection-root).
+Added Phase 2 runbook section + radicale.conf snippet to docs/proton-backup-runbook.md.
+Updated README.md Phase 2 status and TODO.md ROADMAP count 4→3. All 4 TestRadicale*
+tests green; full go test ./... + make test green.
+Friction: none — well-scoped item, design note (id:d407) carried all needed context.
+
 ## 2026-06-13 13:45 — reviewer (claude-opus-4-8, handoff)
 
 Handoff turn on a Go CLI (Proton contacts + calendar backup) that was code-complete
