@@ -72,3 +72,7 @@ relay(hard): Phase 3 rehearsal-harness design (id:56c9) — round-trip gate + or
 ## 2026-06-15 17:45 — strong-execute (claude-opus-4-8, fable-standin, relay-loop)
 
 relay(hard): 0dfb decryption-failure observability — .meta/skipped.json manifest + opt-in --max-skip-rate gate (advisory default)
+
+## 2026-06-22 16:25 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
+
+review CLEAN: lane-tag migration id:5cc5 verified (HARD — hands, gated); refreshed stale relay-contract pointer v2->v4; suite green; 0 open ROUTINE
