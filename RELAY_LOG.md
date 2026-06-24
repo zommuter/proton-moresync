@@ -76,3 +76,7 @@ relay(hard): 0dfb decryption-failure observability — .meta/skipped.json manife
 ## 2026-06-22 16:25 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
 
 review CLEAN: lane-tag migration id:5cc5 verified (HARD — hands, gated); refreshed stale relay-contract pointer v2->v4; suite green; 0 open ROUTINE
+
+## 2026-06-24 20:58 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
+
+Review: 1 gate-annotation commit (id:5cc5→[HARD — decision gate]); suite green, gaming/lint/doctor clean; 1 open item, 0 routine.
