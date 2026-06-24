@@ -100,7 +100,7 @@ is done when its item's tests go green plus a refactor pass, nothing else.
     complexity; modify-only scope (create/delete fenced out). Write path build-gated —
     reopen when a disposable test account exists and Phase 3 is wanted; no ids minted yet.
 
-- [ ] QR-login / session-fork probe (adoption-triggered) [HARD — hands] <!-- id:5cc5 -->
+- [ ] QR-login / session-fork probe (adoption-triggered) [HARD — decision gate] — 🚧 GATED (auto, id:3801; route:human): Adoption/human-gated: needs live Proton forks API probe (borrowed ChildClientID), gated on first external user (TODO id:96d7); not pool/executor-dispatchable (id:2d20). — needs /relay human <!-- id:5cc5 -->
   - **Why HARD**: requires probing Proton's `auth/v4/sessions/forks/{selector}`
     behaviour with a borrowed/generic `ChildClientID` — undocumented API behaviour,
     must yield a documented yes/no before any code.
