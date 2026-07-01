@@ -124,7 +124,7 @@ allowlisted client ID and no current second user.
 |-------|--------|-------------|
 | Spike | done | End-to-end decrypt proof (contacts + calendar), session persisted. |
 | 1 | done | Read-only backup — full fetch+decrypt to git-versioned tree. |
-| 2 | deferred | Read-only live view via Radicale / vdirsyncer / DAVx5. |
+| 2 | in progress | Read-only live view via **Radicale** (decided 2026-06-15; vdirsyncer reclassified to Phase 3, DAVx5 = consumer client). Collection adapter shipped (`cmd/backup/radicale.go`, id:6aad); serving it is a manual runbook step. |
 | 3 | north star | Two-way sync; gated on a rehearsal round-trip against a test account; contacts-write before calendar-write. |
 
 **Rationale for the gate.** Two-way sync can corrupt a live Proton account; it is
