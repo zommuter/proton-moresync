@@ -117,7 +117,7 @@ calendar/<cal-id>/<uid>.ics           # vanilla RFC 5545
 
 `docs/meeting-notes/2026-05-29-1313-proton-moresync-scope-codereuse.md`
 
-## Relay contract <!-- relay-executor contract v4 -->
+## Relay contract <!-- relay-executor contract v6 -->
 
 This repo is managed by a reviewer/executor relay. Load `/relay executor` before
 working on any item, then follow its rules exactly.
