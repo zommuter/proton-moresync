@@ -80,3 +80,7 @@ review CLEAN: lane-tag migration id:5cc5 verified (HARD — hands, gated); refre
 ## 2026-06-24 20:58 — reviewer (claude-opus-4-8, fable-standin, relay-loop)
 
 Review: 1 gate-annotation commit (id:5cc5→[HARD — decision gate]); suite green, gaming/lint/doctor clean; 1 open item, 0 routine.
+
+## 2026-07-01 23:27 — reviewer (claude-fable-5, relay-loop)
+
+Fable recheck of Opus-standin ckpt: empty window, 21/21 tests green (0 skips), ids 0ad0/3c7c/6aad/0dfb re-verified; contract pointer v4→v6 + ARCHITECTURE Phase-2 drift fixed; only open item = human-gated 5cc5, routine_open=0 [id:0ad0,3c7c,6aad,0dfb]
