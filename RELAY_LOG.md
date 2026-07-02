@@ -84,3 +84,7 @@ Review: 1 gate-annotation commit (id:5cc5→[HARD — decision gate]); suite gre
 ## 2026-07-01 23:27 — reviewer (claude-fable-5, relay-loop)
 
 Fable recheck of Opus-standin ckpt: empty window, 21/21 tests green (0 skips), ids 0ad0/3c7c/6aad/0dfb re-verified; contract pointer v4→v6 + ARCHITECTURE Phase-2 drift fixed; only open item = human-gated 5cc5, routine_open=0 [id:0ad0,3c7c,6aad,0dfb]
+
+## 2026-07-02 11:57 — reviewer (claude-fable-5, relay-loop)
+
+Review: quiet window (1 apex ledger chore); 21/21 green (0 skips), gaming/lint/doctor/cross-ledger clean, pointer v6 current; fixed id:2449 conformance orphan (lint-ok, P4); only open item = human-gated 5cc5, routine_open=0 [id:2449,0ad0,3c7c,6aad,0dfb]
