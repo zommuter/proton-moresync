@@ -2,7 +2,7 @@
 
 ## Current
 
-- Relay: 1 open ROADMAP item <!-- id:2449 -->
+- Relay: 1 open ROADMAP item <!-- lint-ok: relay ROADMAP summary line, not a work item --> <!-- id:2449 -->
 
 - [x] **Publish to GitHub.** Add `github` remote and push. — see docs/meeting-notes/2026-06-05-1059-github-publishable.md <!-- id:f8fb --> — published 2026-06-05 at https://github.com/Zommuter/proton-moresync
 
